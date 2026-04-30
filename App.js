@@ -1,20 +1,33 @@
+import './global.css';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useFonts } from 'expo-font';
+import {
+  DMSans_400Regular,
+  DMSans_500Medium,
+  DMSans_600SemiBold,
+} from '@expo-google-fonts/dm-sans';
+import {
+  DMSerifDisplay_400Regular,
+  DMSerifDisplay_400Regular_Italic,
+} from '@expo-google-fonts/dm-serif-display';
+import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_600SemiBold,
+    DMSerifDisplay_400Regular,
+    DMSerifDisplay_400Regular_Italic,
+  });
+
+  if (!fontsLoaded) return null;
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaProvider>
+      <AppNavigator />
+      <StatusBar style="dark" />
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
