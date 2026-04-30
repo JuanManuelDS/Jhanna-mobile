@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Meditation Stats</title>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="android-frame.jsx"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1209;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef } = React;
+
+// ── Mock Data ──────────────────────────────────────────────
+const STREAK_CURRENT = 14;
+const STREAK_LONGEST = 31;
+const TOTAL_SESSIONS = 87;
+
+const RANGE_OPTIONS = [
+  { label: "Last 7 days",   value: "7d" },
+  { label: "Last 14 days",  value: "14d" },
+  { label: "Last 30 days",  value: "30d" },
+  { label: "Last 3 months", value: "3m" },
+];
+
+const ALL_BAR_DATA = {
+  "7d": [
+    { day: "Apr 20", mins: 35 },
+    { day: "Apr 21", mins: 20 },
+    { day: "Apr 22", mins: 40 },
+    { day: "Apr 23", mins: 15 },
+    { day: "Apr 24", mins: 22 },
+    { day: "Apr 25", mins: 28 },
+    { day: "Apr 26", mins: 12 },
+  ],
+  "14d": [
+    { day: "Apr 13", mins: 10 },
+    { day: "Apr 14", mins: 20 },
+    { day: "Apr 15", mins: 15 },
+    { day: "Apr 16", mins: 30 },
+    { day: "Apr 17", mins: 25 },
+    { day: "Apr 18", mins: 0  },
+    { day: "Apr 19", mins: 18 },
+    { day: "Apr 20", mins: 35 },
+    { day: "Apr 21", mins: 20 },
+    { day: "Apr 22", mins: 40 },
+    { day: "Apr 23", mins: 15 },
+    { day: "Apr 24", mins: 22 },
+    { day: "Apr 25", mins: 28 },
+    { day: "Apr 26", mins: 12 },
+  ],
+  "30d": [
+    { day: "Mar 28", mins: 18 }, { day: "Mar 29", mins: 0  }, { day: "Mar 30", mins: 22 },
+    { day: "Mar 31", mins: 30 }, { day: "Apr 01", mins: 15 }, { day: "Apr 02", mins: 25 },
+    { day: "Apr 03", mins: 10 }, { day: "Apr 04", mins: 0  }, { day: "Apr 05", mins: 35 },
+    { day: "Apr 06", mins: 20 }, { day: "Apr 07", mins: 18 }, { day: "Apr 08", mins: 40 },
+    { day: "Apr 09", mins: 12 }, { day: "Apr 10", mins: 28 }, { day: "Apr 11", mins: 22 },
+    { day: "Apr 12", mins: 0  }, { day: "Apr 13", mins: 10 }, { day: "Apr 14", mins: 20 },
+    { day: "Apr 15", mins: 15 }, { day: "Apr 16", mins: 30 }, { day: "Apr 17", mins: 25 },
+    { day: "Apr 18", mins: 0  }, { day: "Apr 19", mins: 18 }, { day: "Apr 20", mins: 35 },
+    { day: "Apr 21", mins: 20 }, { day: "Apr 22", mins: 40 }, { day: "Apr 23", mins: 15 },
+    { day: "Apr 24", mins: 22 }, { day: "Apr 25", mins: 28 }, { day: "Apr 26", mins: 12 },
+  ],
+  "3m": [
+    { day: "Jan 27", mins: 20 }, { day: "Feb 03", mins: 15 }, { day: "Feb 10", mins: 30 },
+    { day: "Feb 17", mins: 0  }, { day: "Feb 24", mins: 25 }, { day: "Mar 03", mins: 18 },
+    { day: "Mar 10", mins: 35 }, { day: "Mar 17", mins: 22 }, { day: "Mar 24", mins: 40 },
+    { day: "Mar 31", mins: 28 }, { day: "Apr 07", mins: 20 }, { day: "Apr 14", mins: 15 },
+    { day: "Apr 21", mins: 38 }, { day: "Apr 26", mins: 12 },
+  ],
+};
+
+const BAR_DATA = ALL_BAR_DATA["14d"];
+
+const SESSIONS = [
+  { id: 1,  date: "Apr 26, 2026", time: "7:02 AM",  duration: "12 min", type: "Morning Calm" },
+  { id: 2,  date: "Apr 25, 2026", time: "6:48 AM",  duration: "28 min", type: "Deep Focus" },
+  { id: 3,  date: "Apr 24, 2026", time: "9:15 PM",  duration: "22 min", type: "Sleep Prep" },
+  { id: 4,  date: "Apr 23, 2026", time: "7:30 AM",  duration: "15 min", type: "Morning Calm" },
+  { id: 5,  date: "Apr 22, 2026", time: "6:00 AM",  duration: "40 min", type: "Body Scan" },
+  { id: 6,  date: "Apr 21, 2026", time: "8:20 AM",  duration: "20 min", type: "Breathwork" },
+  { id: 7,  date: "Apr 20, 2026", time: "7:10 AM",  duration: "35 min", type: "Deep Focus" },
+  { id: 8,  date: "Apr 19, 2026", time: "9:00 PM",  duration: "18 min", type: "Sleep Prep" },
+  { id: 9,  date: "Apr 17, 2026", time: "7:55 AM",  duration: "25 min", type: "Morning Calm" },
+  { id: 10, date: "Apr 16, 2026", time: "6:30 AM",  duration: "30 min", type: "Body Scan" },
+];
+
+const CHART_H = 120;
+const BAR_W = 14;
+const GAP = 6;
+
+function calcChartVars(data) {
+  const nonZero = data.filter(d => d.mins > 0);
+  const avg = nonZero.length ? Math.round(nonZero.reduce((s, d) => s + d.mins, 0) / nonZero.length) : 0;
+  const maxMins = Math.max(...data.map(d => d.mins), 1);
+  return { avg, maxMins };
+}
+
+// ── Colors ─────────────────────────────────────────────────
+const C = {
+  bg:        "#F5E6D3",
+  card:      "#EDD9C0",
+  tan:       "#C8A96E",
+  brown:     "#A0654A",
+  terracotta:"#E8936A",
+  gold:      "#D4B856",
+  text:      "#6B4226",
+  muted:     "#B8956A",
+};
+
+// ── Stat Card ──────────────────────────────────────────────
+function StatCard({ value, label, icon }) {
+  return (
+    <div style={{
+      flex: 1,
+      background: C.tan,
+      borderRadius: 16,
+      padding: "14px 10px",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 4,
+    }}>
+      <span style={{ fontSize: 11, color: C.brown, opacity: 0.7 }}>{icon}</span>
+      <span style={{ fontSize: 26, fontWeight: 800, color: C.brown, lineHeight: 1.1 }}>{value}</span>
+      <span style={{ fontSize: 10, color: C.brown, opacity: 0.75, textAlign: "center", lineHeight: 1.3 }}>{label}</span>
+    </div>
+  );
+}
+
+// ── Bar Chart (SVG) ────────────────────────────────────────
+function BarChart({ data }) {
+  const { avg, maxMins } = calcChartVars(data);
+  const totalW = data.length * (BAR_W + GAP) - GAP;
+  const svgW = totalW + 2;
+  const avgY = CHART_H - (avg / maxMins) * CHART_H;
+
+  return (
+    <div style={{ overflowX: "auto", paddingBottom: 4 }}>
+      <svg width={svgW} height={CHART_H + 28} style={{ display: "block" }}>
+        <line x1={0} y1={avgY} x2={svgW} y2={avgY}
+          stroke={C.gold} strokeWidth={1.5} strokeDasharray="4 3" />
+        {data.map((d, i) => {
+          const barH = d.mins === 0 ? 3 : (d.mins / maxMins) * CHART_H;
+          const x = i * (BAR_W + GAP);
+          const y = CHART_H - barH;
+          const isToday = i === data.length - 1;
+          return (
+            <g key={i}>
+              <rect x={x} y={y} width={BAR_W} height={barH} rx={4}
+                fill={isToday ? C.brown : C.terracotta}
+                opacity={d.mins === 0 ? 0.25 : 1} />
+              {i % 2 === 0 && (
+                <text x={x + BAR_W / 2} y={CHART_H + 16} textAnchor="middle"
+                  fontSize={7.5} fill={C.muted}>{d.day.slice(4)}</text>
+              )}
+            </g>
+          );
+        })}
+        <text x={svgW - 2} y={avgY - 3} textAnchor="end" fontSize={7.5} fill={C.gold} fontWeight="700">
+          avg {avg}m
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+// ── Range Dropdown ─────────────────────────────────────────
+function RangeDropdown({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const selected = RANGE_OPTIONS.find(o => o.value === value);
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: "flex", alignItems: "center", gap: 4,
+          background: C.tan, border: "none", borderRadius: 8,
+          padding: "4px 8px 4px 10px", cursor: "pointer",
+          fontSize: 10, fontWeight: 700, color: C.brown,
+        }}
+      >
+        {selected.label}
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
+          style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+          <path d="M2 3.5L5 6.5L8 3.5" stroke={C.brown} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute", right: 0, top: "calc(100% + 4px)",
+          background: "#FDF3E6", borderRadius: 10, overflow: "hidden",
+          boxShadow: "0 4px 16px rgba(100,50,20,0.18)", zIndex: 10,
+          minWidth: 130, border: `1px solid ${C.tan}`,
+        }}>
+          {RANGE_OPTIONS.map(opt => (
+            <button key={opt.value}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              style={{
+                display: "block", width: "100%", textAlign: "left",
+                padding: "9px 12px", border: "none", cursor: "pointer",
+                fontSize: 11, fontWeight: opt.value === value ? 700 : 400,
+                color: opt.value === value ? C.brown : C.text,
+                background: opt.value === value ? C.card : "transparent",
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Session Row ────────────────────────────────────────────
+function SessionRow({ session }) {
+  return (
+    <div style={{
+      background: C.card,
+      borderRadius: 12,
+      borderLeft: `3.5px solid ${C.tan}`,
+      padding: "10px 12px",
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 8,
+    }}>
+      {/* Clock icon (SVG stand-in) */}
+      <div style={{
+        width: 32, height: 32,
+        borderRadius: "50%",
+        background: C.tan,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="6.5" stroke={C.brown} strokeWidth="1.5"/>
+          <line x1="8" y1="4.5" x2="8" y2="8.2" stroke={C.brown} strokeWidth="1.5" strokeLinecap="round"/>
+          <line x1="8" y1="8.2" x2="10.5" y2="10" stroke={C.brown} strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 2 }}>{session.type}</div>
+        <div style={{ fontSize: 10, color: C.muted }}>{session.date} · {session.time}</div>
+      </div>
+      <div style={{
+        background: C.bg,
+        borderRadius: 8,
+        padding: "4px 8px",
+        fontSize: 11,
+        fontWeight: 700,
+        color: C.brown,
+        flexShrink: 0,
+      }}>
+        {session.duration}
+      </div>
+    </div>
+  );
+}
+
+// ── Main Screen ────────────────────────────────────────────
+function MeditationStats() {
+  const [range, setRange] = useState("14d");
+  const chartData = ALL_BAR_DATA[range];
+  const { avg } = calcChartVars(chartData);
+  return (
+    <div style={{
+      background: C.bg,
+      height: "100%",
+      overflowY: "auto",
+      padding: "16px 16px 32px",
+    }}>
+      {/* Back arrow */}
+      <div style={{ marginBottom: 20, display: "flex", alignItems: "center" }}>
+        <button style={{
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: 4,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          color: C.brown,
+        }}>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M13 4L7 10L13 16" stroke={C.brown} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        <span style={{ fontSize: 18, fontWeight: 800, color: C.text, marginLeft: 4 }}>My Statistics</span>
+      </div>
+
+      {/* Stat cards */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        <StatCard value={STREAK_CURRENT} label={"Current\nStreak"} icon="🌿" />
+        <StatCard value={STREAK_LONGEST} label={"Longest\nStreak"} icon="🏆" />
+        <StatCard value={TOTAL_SESSIONS} label={"Total\nSessions"} icon="🧘" />
+      </div>
+
+      {/* Chart section */}
+      <div style={{
+        background: C.card,
+        borderRadius: 16,
+        padding: "14px 12px 10px",
+        marginBottom: 20,
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Daily Minutes</span>
+          <RangeDropdown value={range} onChange={setRange} />
+        </div>
+        <BarChart data={chartData} />
+        <div style={{ display: "flex", gap: 14, marginTop: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 3, background: C.terracotta }}></div>
+            <span style={{ fontSize: 9.5, color: C.muted }}>Session</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <div style={{ width: 14, height: 2, background: C.gold, borderRadius: 1 }}></div>
+            <span style={{ fontSize: 9.5, color: C.muted }}>Daily avg ({avg} min)</span>
+
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 3, background: C.brown }}></div>
+            <span style={{ fontSize: 9.5, color: C.muted }}>Today</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Session list */}
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Past Sessions</span>
+          <span style={{ fontSize: 10, color: C.muted }}>{SESSIONS.length} recent</span>
+        </div>
+        {SESSIONS.map(s => <SessionRow key={s.id} session={s} />)}
+      </div>
+    </div>
+  );
+}
+
+// ── Root ───────────────────────────────────────────────────
+function App() {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
+      <AndroidDevice statusBarDark={true}>
+        <MeditationStats />
+      </AndroidDevice>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
