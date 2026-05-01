@@ -14,8 +14,10 @@ function StepButton({ symbol, onPress }) {
   );
 }
 
-export default function TimePickerCard({ label, sublabel, value, unit }) {
+export default function TimePickerCard({ label, sublabel, value, unit, onDecrement, onIncrement }) {
   const noop = () => {};
+  const handleDecrement = onDecrement ?? noop;
+  const handleIncrement = onIncrement ?? noop;
   return (
     <View
       className="flex-row items-center justify-between rounded-[20px] border border-sand/25 bg-offwhite/80 px-5 py-4"
@@ -31,14 +33,14 @@ export default function TimePickerCard({ label, sublabel, value, unit }) {
         )}
       </View>
       <View className="flex-row items-center gap-3.5">
-        <StepButton symbol="−" onPress={noop} />
+        <StepButton symbol="−" onPress={handleDecrement} />
         <View className="min-w-[52px] items-center">
           <Text className="font-serif text-[28px] leading-none text-brown">
             {value}
           </Text>
           <Text className="mt-0.5 font-sans text-[11px] text-sand">{unit}</Text>
         </View>
-        <StepButton symbol="+" onPress={noop} />
+        <StepButton symbol="+" onPress={handleIncrement} />
       </View>
     </View>
   );
