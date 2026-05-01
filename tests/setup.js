@@ -14,10 +14,13 @@ jest.mock('react-native-reanimated', () => {
     createAnimatedComponent: (C) => C,
     useSharedValue: (initial) => ({ value: initial }),
     useAnimatedStyle: () => ({}),
-    withRepeat: (v) => v,
+    useAnimatedProps: () => ({}),
+    withRepeat: (_n, v) => v,
     withTiming: (v) => v,
     withDelay: (_d, v) => v,
-    Easing: { inOut: () => () => 0, ease: () => 0 },
+    withSequence: (...args) => args[args.length - 1],
+    cancelAnimation: () => {},
+    Easing: { linear: 0, inOut: () => () => 0, ease: () => 0 },
   };
 });
 
@@ -36,3 +39,33 @@ jest.mock('@expo/vector-icons', () => {
     Ionicons: Icon,
   };
 });
+
+// In-memory AsyncStorage mock
+const _storage = {};
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  getItem: jest.fn((key) => Promise.resolve(_storage[key] ?? null)),
+  setItem: jest.fn((key, value) => { _storage[key] = value; return Promise.resolve(); }),
+  removeItem: jest.fn((key) => { delete _storage[key]; return Promise.resolve(); }),
+  clear: jest.fn(() => { Object.keys(_storage).forEach((k) => delete _storage[k]); return Promise.resolve(); }),
+  getAllKeys: jest.fn(() => Promise.resolve(Object.keys(_storage))),
+  multiGet: jest.fn((keys) => Promise.resolve(keys.map((k) => [k, _storage[k] ?? null]))),
+  multiSet: jest.fn((pairs) => { pairs.forEach(([k, v]) => { _storage[k] = v; }); return Promise.resolve(); }),
+}));
+
+// expo-av mock
+jest.mock('expo-av', () => ({
+  Audio: {
+    Sound: {
+      createAsync: jest.fn(() =>
+        Promise.resolve({
+          sound: {
+            playAsync: jest.fn(() => Promise.resolve()),
+            replayAsync: jest.fn(() => Promise.resolve()),
+            unloadAsync: jest.fn(() => Promise.resolve()),
+          },
+        })
+      ),
+    },
+    setAudioModeAsync: jest.fn(() => Promise.resolve()),
+  },
+}));

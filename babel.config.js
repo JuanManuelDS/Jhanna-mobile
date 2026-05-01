@@ -5,8 +5,8 @@ module.exports = function (api) {
   return {
     presets: [
       isTest
-        ? 'babel-preset-expo'
-        : ['babel-preset-expo', { jsxImportSource: 'nativewind' }],
+        ? ['babel-preset-expo', { worklets: false }]
+        : ['babel-preset-expo', { jsxImportSource: 'nativewind', worklets: false }],
       ...(isTest ? [] : ['nativewind/babel']),
     ],
     plugins: ['react-native-reanimated/plugin'],

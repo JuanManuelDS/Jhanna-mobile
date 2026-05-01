@@ -2,6 +2,8 @@ import { render, fireEvent } from '@testing-library/react-native';
 import HomeScreen from '../src/screens/HomeScreen';
 import { getGreeting } from '../src/utils/greeting';
 
+const mockNavigation = { navigate: jest.fn() };
+
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react');
   const { View } = require('react-native');
@@ -16,25 +18,25 @@ jest.mock('react-native-safe-area-context', () => {
 
 describe('HomeScreen', () => {
   it('renders without crashing', () => {
-    const { toJSON } = render(<HomeScreen />);
+    const { toJSON } = render(<HomeScreen navigation={mockNavigation} />);
     expect(toJSON()).toBeTruthy();
   });
 
   it('renders the streak badge with placeholder count and label', () => {
-    const { getByText } = render(<HomeScreen />);
+    const { getByText } = render(<HomeScreen navigation={mockNavigation} />);
     expect(getByText('14')).toBeTruthy();
     expect(getByText('day streak')).toBeTruthy();
   });
 
   it('renders a pressable Statistics button', () => {
-    const { getByLabelText } = render(<HomeScreen />);
+    const { getByLabelText } = render(<HomeScreen navigation={mockNavigation} />);
     const btn = getByLabelText('Statistics');
     expect(btn).toBeTruthy();
     fireEvent.press(btn);
   });
 
   it('renders both picker cards with labels, sublabels, values and units', () => {
-    const { getByText, getAllByText } = render(<HomeScreen />);
+    const { getByText, getAllByText } = render(<HomeScreen navigation={mockNavigation} />);
     expect(getByText('Preparation')).toBeTruthy();
     expect(getByText('Settle into stillness')).toBeTruthy();
     expect(getByText('1')).toBeTruthy();
@@ -45,7 +47,7 @@ describe('HomeScreen', () => {
   });
 
   it('renders a pressable Begin Session button', () => {
-    const { getByLabelText, getByText } = render(<HomeScreen />);
+    const { getByLabelText, getByText } = render(<HomeScreen navigation={mockNavigation} />);
     expect(getByText('Begin Session')).toBeTruthy();
     fireEvent.press(getByLabelText('Begin Session'));
   });
@@ -76,7 +78,7 @@ describe('HomeScreen', () => {
       ];
       for (const [hour, pattern] of cases) {
         const spy = jest.spyOn(Date.prototype, 'getHours').mockReturnValue(hour);
-        const { queryAllByText, unmount } = render(<HomeScreen />);
+        const { queryAllByText, unmount } = render(<HomeScreen navigation={mockNavigation} />);
         expect(queryAllByText(pattern).length).toBeGreaterThan(0);
         unmount();
         spy.mockRestore();

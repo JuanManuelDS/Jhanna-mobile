@@ -6,10 +6,29 @@ import BreathingOrb from '../components/BreathingOrb';
 import TimePickerCard from '../components/TimePickerCard';
 import BeginButton from '../components/BeginButton';
 import { getGreeting } from '../utils/greeting';
+import { useState } from 'react';
 
-export default function HomeScreen() {
+const MIN_PREP = 0;
+const MAX_PREP = 30;
+const MIN_MED = 1;
+const MAX_MED = 60;
+
+export default function HomeScreen({ navigation }) {
   const greeting = getGreeting(new Date().getHours());
+  const [prepTime, setPrepTime] = useState(1);
+  const [meditationTime, setMeditationTime] = useState(10);
+
   const noop = () => {};
+
+  const adjustPrep = (delta) =>
+    setPrepTime((v) => Math.min(MAX_PREP, Math.max(MIN_PREP, v + delta)));
+
+  const adjustMed = (delta) =>
+    setMeditationTime((v) => Math.min(MAX_MED, Math.max(MIN_MED, v + delta)));
+
+  const handleBegin = () => {
+    navigation.navigate('Session', { prepTime, meditationTime });
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-cream" edges={['top', 'bottom']}>
@@ -24,7 +43,7 @@ export default function HomeScreen() {
         <Text className="text-center font-serif text-[28px] leading-[34px] text-brown">
           {greeting}
           {'\n'}
-          <Text className="font-serif-italic text-terracotta">be still.</Text>
+          <Text className="font-serif-italic text-terracotta">Observe reality as it is, not as you would like it to be.</Text>
         </Text>
         <Text className="text-center font-sans text-xs tracking-[0.3px] text-sand">
           Your practice awaits
@@ -35,19 +54,23 @@ export default function HomeScreen() {
         <TimePickerCard
           label="Preparation"
           sublabel="Settle into stillness"
-          value="1"
+          value={String(prepTime)}
           unit="min"
+          onDecrement={() => adjustPrep(-1)}
+          onIncrement={() => adjustPrep(1)}
         />
         <TimePickerCard
           label="Meditation"
           sublabel="Jhanna practice"
-          value="10"
+          value={String(meditationTime)}
           unit="min"
+          onDecrement={() => adjustMed(-1)}
+          onIncrement={() => adjustMed(1)}
         />
       </View>
 
       <View className="px-5 pb-7">
-        <BeginButton onPress={noop} />
+        <BeginButton onPress={handleBegin} />
       </View>
     </SafeAreaView>
   );
