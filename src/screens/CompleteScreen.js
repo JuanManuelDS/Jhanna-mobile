@@ -126,7 +126,7 @@ export default function CompleteScreen({ route, navigation }) {
   }, [navigation]);
 
   const handleViewStats = useCallback(() => {
-    navigation.navigate('Stats');
+    navigation.navigate('Statistics');
   }, [navigation]);
 
   useFocusEffect(
