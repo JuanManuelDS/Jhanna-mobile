@@ -63,7 +63,8 @@ export default function SessionScreen({ route, navigation }) {
       recordCompletedSession({ durationMinutes: meditationTime }).then((result) => {
         navigation.replace('Complete', {
           duration: result.duration,
-          streak: result.streak,
+          streakCount: result.streak.current,
+          date: new Date().toISOString(),
         });
       });
       return;
@@ -114,7 +115,8 @@ export default function SessionScreen({ route, navigation }) {
         recordCompletedSession({ durationMinutes: meditatedMinutes }).then((result) => {
           navigation.replace('Complete', {
             duration: meditatedMinutes,
-            streak: result.streak,
+            streakCount: result.streak.current,
+            date: new Date().toISOString(),
           });
         });
         return;
