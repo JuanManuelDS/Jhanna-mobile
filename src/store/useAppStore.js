@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { loadStorageData, recordCompletedSession } from '../utils/session';
+import { loadStorageData, recordCompletedSession, saveSettings } from '../utils/session';
+import { todayLocalISO } from '../utils/date';
 
 const useAppStore = create((set, get) => ({
   sessions: [],
@@ -18,11 +19,16 @@ const useAppStore = create((set, get) => ({
     set({
       sessions: [
         ...sessions,
-        { date: result.streak ? undefined : null, duration: durationMinutes, timestamp: Date.now() },
+        { date: todayLocalISO(), duration: durationMinutes, timestamp: Date.now() },
       ],
       streak: result.streak,
     });
     return result;
+  },
+
+  updateSettings: async (newSettings) => {
+    await saveSettings(newSettings);
+    set({ settings: newSettings });
   },
 }));
 

@@ -1,12 +1,13 @@
 import { View, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState } from 'react';
 import StreakBadge from '../components/StreakBadge';
 import StatsButton from '../components/StatsButton';
 import BreathingOrb from '../components/BreathingOrb';
 import TimePickerCard from '../components/TimePickerCard';
 import BeginButton from '../components/BeginButton';
 import { getGreeting } from '../utils/greeting';
-import { useState } from 'react';
+import useAppStore from '../store/useAppStore';
 
 const MIN_PREP = 0;
 const MAX_PREP = 30;
@@ -15,14 +16,24 @@ const MAX_MED = 60;
 
 export default function HomeScreen({ navigation }) {
   const greeting = getGreeting(new Date().getHours());
-  const [prepTime, setPrepTime] = useState(1);
-  const [meditationTime, setMeditationTime] = useState(10);
+  const streak = useAppStore((s) => s.streak);
+  const settings = useAppStore((s) => s.settings);
+  const updateSettings = useAppStore((s) => s.updateSettings);
 
-  const adjustPrep = (delta) =>
-    setPrepTime((v) => Math.min(MAX_PREP, Math.max(MIN_PREP, v + delta)));
+  const [prepTime, setPrepTime] = useState(settings.prepTime);
+  const [meditationTime, setMeditationTime] = useState(settings.meditationTime);
 
-  const adjustMed = (delta) =>
-    setMeditationTime((v) => Math.min(MAX_MED, Math.max(MIN_MED, v + delta)));
+  const adjustPrep = (delta) => {
+    const next = Math.min(MAX_PREP, Math.max(MIN_PREP, prepTime + delta));
+    setPrepTime(next);
+    updateSettings({ prepTime: next, meditationTime });
+  };
+
+  const adjustMed = (delta) => {
+    const next = Math.min(MAX_MED, Math.max(MIN_MED, meditationTime + delta));
+    setMeditationTime(next);
+    updateSettings({ prepTime, meditationTime: next });
+  };
 
   const handleBegin = () => {
     navigation.navigate('Session', { prepTime, meditationTime });
@@ -31,7 +42,7 @@ export default function HomeScreen({ navigation }) {
   return (
     <SafeAreaView className="flex-1 bg-cream" edges={['top', 'bottom']}>
       <View className="flex-row items-center justify-between px-5 pb-3 pt-2">
-        <StreakBadge count={14} />
+        <StreakBadge count={streak.current} />
         <StatsButton onPress={() => navigation.navigate('Stats')} />
       </View>
 

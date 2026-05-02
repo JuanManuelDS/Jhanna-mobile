@@ -6,10 +6,19 @@ import StatCard from '../components/StatCard';
 import RangeDropdown from '../components/RangeDropdown';
 import DailyMinutesChart from '../components/DailyMinutesChart';
 import SessionRow from '../components/SessionRow';
-import { ALL_BAR_DATA, SESSIONS, STATS } from '../utils/statsMockData';
+import useAppStore from '../store/useAppStore';
+import { getBarChartData } from '../utils/chartData';
+import { todayLocalISO } from '../utils/date';
+
+const RANGE_DAYS = { '7d': 7, '14d': 14, '30d': 30, '3m': 91 };
 
 export default function StatsScreen({ navigation }) {
   const [range, setRange] = useState('14d');
+  const sessions = useAppStore((s) => s.sessions);
+  const streak = useAppStore((s) => s.streak);
+
+  const chartData = getBarChartData(sessions, RANGE_DAYS[range], todayLocalISO());
+  const sortedSessions = [...sessions].reverse();
 
   return (
     <SafeAreaView className="flex-1 bg-cream" edges={['top', 'bottom']}>
@@ -32,9 +41,9 @@ export default function StatsScreen({ navigation }) {
 
         {/* Stat cards */}
         <View className="mb-5 flex-row gap-2">
-          <StatCard icon="leaf" value={STATS.current} label={'Current\nStreak'} />
-          <StatCard icon="trophy-outline" value={STATS.longest} label={'Longest\nStreak'} />
-          <StatCard icon="meditation" value={STATS.total} label={'Total\nSessions'} />
+          <StatCard icon="leaf" value={streak.current} label={'Current\nStreak'} />
+          <StatCard icon="trophy-outline" value={streak.longest} label={'Longest\nStreak'} />
+          <StatCard icon="meditation" value={sessions.length} label={'Total\nSessions'} />
         </View>
 
         {/* Chart card */}
@@ -43,17 +52,17 @@ export default function StatsScreen({ navigation }) {
             <Text className="font-sans-semibold text-sm text-brown">Daily Minutes</Text>
             <RangeDropdown value={range} onChange={setRange} />
           </View>
-          <DailyMinutesChart data={ALL_BAR_DATA[range]} />
+          <DailyMinutesChart data={chartData} />
         </View>
 
         {/* Past sessions */}
         <View>
           <View className="mb-2.5 flex-row items-baseline justify-between">
             <Text className="font-sans-semibold text-sm text-brown">Past Sessions</Text>
-            <Text className="font-sans text-xs text-sand">{SESSIONS.length} recent</Text>
+            <Text className="font-sans text-xs text-sand">{sessions.length} sessions</Text>
           </View>
-          {SESSIONS.map((s) => (
-            <SessionRow key={s.id} session={s} />
+          {sortedSessions.map((s) => (
+            <SessionRow key={s.timestamp} session={s} />
           ))}
         </View>
       </ScrollView>

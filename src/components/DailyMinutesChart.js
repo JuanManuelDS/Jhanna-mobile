@@ -1,7 +1,7 @@
 import { View, Text, ScrollView } from 'react-native';
 import { CartesianChart, Bar } from 'victory-native';
 import { DashPathEffect, Line as SkiaLine, vec } from '@shopify/react-native-skia';
-import { calcChartVars } from '../utils/statsMockData';
+import { calcChartVars } from '../utils/chartData';
 
 const CHART_H = 120;
 const BAR_W = 14;
