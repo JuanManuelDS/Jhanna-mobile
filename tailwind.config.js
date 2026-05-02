@@ -12,6 +12,7 @@ module.exports = {
         coral: '#D4796A',
         brown: '#A0654A',
         offwhite: '#FFF8F0',
+        card: '#EDD9C0',
       },
       fontFamily: {
         sans: ['DMSans_400Regular'],

@@ -18,8 +18,6 @@ export default function HomeScreen({ navigation }) {
   const [prepTime, setPrepTime] = useState(1);
   const [meditationTime, setMeditationTime] = useState(10);
 
-  const noop = () => {};
-
   const adjustPrep = (delta) =>
     setPrepTime((v) => Math.min(MAX_PREP, Math.max(MIN_PREP, v + delta)));
 
@@ -34,7 +32,7 @@ export default function HomeScreen({ navigation }) {
     <SafeAreaView className="flex-1 bg-cream" edges={['top', 'bottom']}>
       <View className="flex-row items-center justify-between px-5 pb-3 pt-2">
         <StreakBadge count={14} />
-        <StatsButton onPress={noop} />
+        <StatsButton onPress={() => navigation.navigate('Stats')} />
       </View>
 
       <View className="flex-1 items-center justify-center gap-2.5 px-7">
