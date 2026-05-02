@@ -3,6 +3,15 @@ import { computeStreakUpdate } from '../src/utils/streak';
 const streak = (current, longest) => ({ current, longest });
 
 describe('computeStreakUpdate', () => {
+  it('first session ever → streak = 1', () => {
+    const result = computeStreakUpdate(
+      [{ date: '2026-05-01', duration: 10 }],
+      { current: 0, longest: 0 },
+      '2026-05-01'
+    );
+    expect(result).toEqual({ current: 1, longest: 1 });
+  });
+
   it('returns unchanged streak when today has no session', () => {
     const result = computeStreakUpdate([], streak(3, 5), '2026-05-01');
     expect(result).toEqual(streak(3, 5));

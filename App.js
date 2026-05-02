@@ -1,4 +1,5 @@
 import './global.css';
+import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
@@ -12,8 +13,12 @@ import {
   DMSerifDisplay_400Regular_Italic,
 } from '@expo-google-fonts/dm-serif-display';
 import AppNavigator from './src/navigation/AppNavigator';
+import useAppStore from './src/store/useAppStore';
 
 export default function App() {
+  const hydrate = useAppStore((s) => s.hydrate);
+  const hydrated = useAppStore((s) => s.hydrated);
+
   const [fontsLoaded] = useFonts({
     DMSans_400Regular,
     DMSans_500Medium,
@@ -22,7 +27,11 @@ export default function App() {
     DMSerifDisplay_400Regular_Italic,
   });
 
-  if (!fontsLoaded) return null;
+  useEffect(() => {
+    hydrate();
+  }, []);
+
+  if (!fontsLoaded || !hydrated) return null;
 
   return (
     <SafeAreaProvider>

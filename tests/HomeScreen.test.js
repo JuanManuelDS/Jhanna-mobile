@@ -16,13 +16,26 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
+jest.mock('../src/store/useAppStore', () => {
+  const store = {
+    sessions: [],
+    streak: { current: 14, longest: 31 },
+    settings: { prepTime: 1, meditationTime: 10 },
+    hydrated: true,
+    hydrate: jest.fn(),
+    updateSettings: jest.fn(),
+    commitCompletedSession: jest.fn(),
+  };
+  return { __esModule: true, default: jest.fn((selector) => selector(store)) };
+});
+
 describe('HomeScreen', () => {
   it('renders without crashing', () => {
     const { toJSON } = render(<HomeScreen navigation={mockNavigation} />);
     expect(toJSON()).toBeTruthy();
   });
 
-  it('renders the streak badge with placeholder count and label', () => {
+  it('renders the streak badge with store count and label', () => {
     const { getByText } = render(<HomeScreen navigation={mockNavigation} />);
     expect(getByText('14')).toBeTruthy();
     expect(getByText('day streak')).toBeTruthy();

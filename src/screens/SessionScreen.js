@@ -2,17 +2,19 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { View, StyleSheet, BackHandler } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { phaseAt } from '../utils/timer';
-import { recordCompletedSession } from '../utils/session';
 import { useBells } from '../hooks/useBells';
 import CircularTimer from '../components/CircularTimer';
 import PhaseLabel from '../components/PhaseLabel';
 import PhaseDots from '../components/PhaseDots';
 import SessionControls from '../components/SessionControls';
+import useAppStore from '../store/useAppStore';
 
 export default function SessionScreen({ route, navigation }) {
   const { prepTime = 1, meditationTime = 10 } = route.params ?? {};
   const prepSec = prepTime * 60;
   const medSec = meditationTime * 60;
+
+  const commitCompletedSession = useAppStore((s) => s.commitCompletedSession);
 
   const [elapsedSec, setElapsedSec] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -28,7 +30,6 @@ export default function SessionScreen({ route, navigation }) {
 
   const { phase, remainingSeconds } = phaseAt(prepSec, medSec, elapsedSec);
 
-  // Determine phase duration for the arc
   const phaseDurationSec = phase === 'preparation' ? prepSec : medSec;
 
   const ringBell = useCallback(() => {
@@ -36,7 +37,6 @@ export default function SessionScreen({ route, navigation }) {
     setTimeout(() => setRinging(false), 750);
   }, []);
 
-  // Start/stop the tick interval
   useEffect(() => {
     if (isPaused || completedRef.current) {
       clearInterval(intervalRef.current);
@@ -48,7 +48,6 @@ export default function SessionScreen({ route, navigation }) {
     return () => clearInterval(intervalRef.current);
   }, [isPaused]);
 
-  // React to phase/completion changes
   const prevPhaseRef = useRef(phase);
   useEffect(() => {
     const prev = prevPhaseRef.current;
@@ -60,7 +59,7 @@ export default function SessionScreen({ route, navigation }) {
       ringBell();
       playEndBell();
 
-      recordCompletedSession({ durationMinutes: meditationTime }).then((result) => {
+      commitCompletedSession({ durationMinutes: meditationTime }).then((result) => {
         navigation.replace('Complete', {
           duration: result.duration,
           streakCount: result.streak.current,
@@ -77,7 +76,6 @@ export default function SessionScreen({ route, navigation }) {
     }
   }, [phase]);
 
-  // Android hardware back = stop (no save if mid-prep, save meditated time if mid-med)
   useFocusEffect(
     useCallback(() => {
       const onBack = () => {
@@ -112,7 +110,7 @@ export default function SessionScreen({ route, navigation }) {
       const meditatedSec = elapsedSec - prepSec;
       const meditatedMinutes = Math.floor(meditatedSec / 60);
       if (meditatedMinutes > 0) {
-        recordCompletedSession({ durationMinutes: meditatedMinutes }).then((result) => {
+        commitCompletedSession({ durationMinutes: meditatedMinutes }).then((result) => {
           navigation.replace('Complete', {
             duration: meditatedMinutes,
             streakCount: result.streak.current,
@@ -126,7 +124,6 @@ export default function SessionScreen({ route, navigation }) {
     navigation.popToTop();
   };
 
-  // Cleanup confirm timer on unmount
   useEffect(() => {
     return () => {
       clearTimeout(confirmTimerRef.current);
@@ -134,7 +131,6 @@ export default function SessionScreen({ route, navigation }) {
     };
   }, []);
 
-  // Skip-prep edge case: if medSec is 0, go home
   if (medSec === 0) {
     navigation.popToTop();
     return null;

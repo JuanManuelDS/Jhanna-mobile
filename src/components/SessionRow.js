@@ -2,6 +2,10 @@ import { View, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function SessionRow({ session }) {
+  const d = new Date(session.timestamp);
+  const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
   return (
     <View
       className="mb-2 flex-row items-center gap-2.5 rounded-xl bg-card px-3 py-2.5"
@@ -13,15 +17,13 @@ export default function SessionRow({ session }) {
 
       <View className="min-w-0 flex-1">
         <Text className="mb-0.5 font-sans-semibold text-xs text-brown" numberOfLines={1}>
-          {session.type}
+          {dateStr}
         </Text>
-        <Text className="font-sans text-[10px] text-sand">
-          {session.date} · {session.time}
-        </Text>
+        <Text className="font-sans text-[10px] text-sand">{timeStr}</Text>
       </View>
 
       <View className="shrink-0 rounded-lg bg-cream px-2 py-1">
-        <Text className="font-sans-semibold text-[11px] text-brown">{session.duration}</Text>
+        <Text className="font-sans-semibold text-[11px] text-brown">{session.duration} min</Text>
       </View>
     </View>
   );
