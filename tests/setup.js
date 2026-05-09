@@ -20,7 +20,7 @@ jest.mock('react-native-reanimated', () => {
     withDelay: (_d, v) => v,
     withSequence: (...args) => args[args.length - 1],
     cancelAnimation: () => {},
-    Easing: { linear: 0, inOut: () => () => 0, ease: () => 0 },
+    Easing: { linear: 0, inOut: () => () => 0, ease: () => 0, out: () => 0, cubic: 0 },
   };
 });
 
@@ -51,6 +51,14 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   multiGet: jest.fn((keys) => Promise.resolve(keys.map((k) => [k, _storage[k] ?? null]))),
   multiSet: jest.fn((pairs) => { pairs.forEach(([k, v]) => { _storage[k] = v; }); return Promise.resolve(); }),
 }));
+
+jest.mock('expo-blur', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    BlurView: ({ children, ...rest }) => React.createElement(View, rest, children),
+  };
+});
 
 // expo-av mock
 jest.mock('expo-av', () => ({

@@ -31,7 +31,7 @@ function PulsingText({ text }) {
   );
 }
 
-export default function SessionControls({ isRunning, confirmingStop, onPauseResume, onStop, onStopConfirm }) {
+export default function SessionControls({ isRunning, onPauseResume, onStop }) {
   return (
     <View style={styles.wrapper}>
       {!isRunning && <PulsingText text="PAUSED" />}
@@ -40,20 +40,28 @@ export default function SessionControls({ isRunning, confirmingStop, onPauseResu
       <View style={styles.buttons}>
         <Pressable
           onPress={onPauseResume}
-          style={({ pressed }) => [styles.btn, styles.btnTerracotta, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.shadowTerracotta, pressed && styles.pressed]}
           accessibilityRole="button"
           accessibilityLabel={isRunning ? 'Pause' : 'Resume'}
         >
-          <Text style={styles.btnText}>{isRunning ? 'Pause' : 'Resume'}</Text>
+          <View className="rounded-[28px] bg-terracotta px-[44px] py-[20px] items-center">
+            <Text className="text-brown font-sans-medium text-base" style={styles.btnLetterSpacing}>
+              {isRunning ? 'Pause' : 'Resume'}
+            </Text>
+          </View>
         </Pressable>
 
         <Pressable
-          onPress={confirmingStop ? onStopConfirm : onStop}
-          style={({ pressed }) => [styles.btn, styles.btnCoral, pressed && styles.pressed]}
+          onPress={onStop}
+          style={({ pressed }) => [styles.shadowCoral, pressed && styles.pressed]}
           accessibilityRole="button"
-          accessibilityLabel={confirmingStop ? 'Confirm stop' : 'Stop'}
+          accessibilityLabel="Stop"
         >
-          <Text style={styles.btnText}>{confirmingStop ? 'End session?' : 'Stop'}</Text>
+          <View className="rounded-[28px] bg-coral px-[44px] py-[20px] items-center">
+            <Text className="text-brown font-sans-medium text-base" style={styles.btnLetterSpacing}>
+              Stop
+            </Text>
+          </View>
         </Pressable>
       </View>
     </View>
@@ -63,7 +71,7 @@ export default function SessionControls({ isRunning, confirmingStop, onPauseResu
 const styles = StyleSheet.create({
   wrapper: {
     position: 'absolute',
-    bottom: 52,
+    bottom: 100,
     alignItems: 'center',
     gap: 18,
   },
@@ -71,33 +79,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 14,
   },
-  btn: {
+  shadowTerracotta: {
     borderRadius: 28,
-    paddingVertical: 14,
-    paddingHorizontal: 34,
-  },
-  btnTerracotta: {
-    backgroundColor: '#E8936A',
     shadowColor: '#E8936A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.33,
     shadowRadius: 10,
     elevation: 6,
   },
-  btnCoral: {
-    backgroundColor: '#D4796A',
+  shadowCoral: {
+    borderRadius: 28,
     shadowColor: '#D4796A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.27,
     shadowRadius: 10,
     elevation: 6,
   },
-  btnText: {
-    color: '#A0654A',
-    fontSize: 14,
-    fontWeight: '500',
+  btnLetterSpacing: {
     letterSpacing: 1,
-    fontFamily: 'DMSans_500Medium',
   },
   pressed: {
     transform: [{ scale: 0.95 }],
