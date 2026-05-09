@@ -1,85 +1,163 @@
-import { View, Text } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
+import { View, Text, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import StreakBadge from '../components/StreakBadge';
 import StatsButton from '../components/StatsButton';
 import BreathingOrb from '../components/BreathingOrb';
-import TimePickerCard from '../components/TimePickerCard';
+import EditableTimePickerCard from '../components/EditableTimePickerCard';
 import BeginButton from '../components/BeginButton';
+import TabBar from '../components/TabBar';
+import BellSelect from '../components/BellSelect';
+import PredefinedMeditationCard from '../components/PredefinedMeditationCard';
 import { getGreeting } from '../utils/greeting';
+import { PREDEFINED_MEDITATIONS, getPredefinedById } from '../utils/predefinedMeditations';
 import useAppStore from '../store/useAppStore';
 
-const MIN_PREP = 0;
-const MAX_PREP = 30;
-const MIN_MED = 1;
-const MAX_MED = 60;
+const PREP_MIN = 5;
+const PREP_MAX = 600;
+const PREP_STEP = 10;
+const MED_MIN = 1;
+const MED_MAX = 240;
+const MED_STEP = 1;
+
+const TABS = [
+  { value: 'manual', label: 'Manual' },
+  { value: 'predefined', label: 'Predefined' },
+];
 
 export default function HomeScreen({ navigation }) {
   const greeting = getGreeting(new Date().getHours());
   const streak = useAppStore((s) => s.streak);
   const settings = useAppStore((s) => s.settings);
+  const sessionDefaults = useAppStore((s) => s.sessionDefaults);
   const updateSettings = useAppStore((s) => s.updateSettings);
+  const updateSessionDefaults = useAppStore((s) => s.updateSessionDefaults);
 
-  const [prepTime, setPrepTime] = useState(settings.prepTime);
-  const [meditationTime, setMeditationTime] = useState(settings.meditationTime);
+  const [activeTab, setActiveTab] = useState('manual');
+  const [selectedPredefId, setSelectedPredefId] = useState(
+    sessionDefaults?.lastPredefinedId ?? null
+  );
 
-  const adjustPrep = (delta) => {
-    const next = Math.min(MAX_PREP, Math.max(MIN_PREP, prepTime + delta));
-    setPrepTime(next);
-    updateSettings({ prepTime: next, meditationTime });
+  const prepSeconds = settings.prepSeconds;
+  const meditationTime = settings.meditationTime;
+  const startBell = settings.startBell;
+  const endBell = settings.endBell;
+
+  const setPrepSeconds = (next) => updateSettings({ prepSeconds: next });
+  const setMeditationTime = (next) => updateSettings({ meditationTime: next });
+  const setStartBell = (next) => updateSettings({ startBell: next });
+  const setEndBell = (next) => updateSettings({ endBell: next });
+
+  const handleSelectPredef = (med) => {
+    const next = med.id === selectedPredefId ? null : med.id;
+    setSelectedPredefId(next);
+    updateSessionDefaults({ lastPredefinedId: next });
   };
 
-  const adjustMed = (delta) => {
-    const next = Math.min(MAX_MED, Math.max(MIN_MED, meditationTime + delta));
-    setMeditationTime(next);
-    updateSettings({ prepTime, meditationTime: next });
-  };
+  const isReady = activeTab === 'manual' || selectedPredefId != null;
 
   const handleBegin = () => {
-    navigation.navigate('Session', { prepTime, meditationTime });
+    if (!isReady) return;
+    if (activeTab === 'predefined') {
+      const m = getPredefinedById(selectedPredefId);
+      if (!m) return;
+      navigation.navigate('Session', {
+        prepSeconds: m.prepTime,
+        meditationTime: m.meditationTime,
+        startBell: m.startBell,
+        endBell: m.endBell,
+      });
+      return;
+    }
+    navigation.navigate('Session', {
+      prepSeconds,
+      meditationTime,
+      startBell,
+      endBell,
+    });
   };
 
   return (
     <SafeAreaView className="flex-1 bg-cream" edges={['top', 'bottom']}>
-      <View className="flex-row items-center justify-between px-5 pb-3 pt-2">
+      <View className="flex-row items-center justify-between px-5 pb-2 pt-2">
         <StreakBadge count={streak.current} />
         <StatsButton onPress={() => navigation.navigate('Stats')} />
       </View>
 
-      <View className="flex-1 items-center justify-center gap-2.5 px-7">
+      <View className="flex-1 items-center justify-center gap-1.5 px-7">
         <BreathingOrb />
-        <View className="my-2 h-px w-10 bg-sand/40" />
-        <Text className="text-center font-serif text-[28px] leading-[34px] text-brown">
+        <View className="my-1 h-px w-10 bg-sand/40" />
+        <Text className="text-center font-serif text-[24px] leading-[28px] text-brown">
           {greeting}
           {'\n'}
-          <Text className="font-serif-italic text-terracotta">Observe reality as it is, not as you would like it to be.</Text>
+          <Text className="font-serif-italic text-terracotta">be still.</Text>
         </Text>
         <Text className="text-center font-sans text-xs tracking-[0.3px] text-sand">
           Your practice awaits
         </Text>
       </View>
 
-      <View className="gap-3 px-5 pb-4">
-        <TimePickerCard
-          label="Preparation"
-          sublabel="Settle into stillness"
-          value={String(prepTime)}
-          unit="min"
-          onDecrement={() => adjustPrep(-1)}
-          onIncrement={() => adjustPrep(1)}
-        />
-        <TimePickerCard
-          label="Meditation"
-          sublabel="Jhanna practice"
-          value={String(meditationTime)}
-          unit="min"
-          onDecrement={() => adjustMed(-1)}
-          onIncrement={() => adjustMed(1)}
-        />
+      <View className="px-5">
+        <View
+          className="overflow-hidden rounded-[20px] border border-sand/20 bg-offwhite/80"
+          style={{ height: 290 }}
+        >
+          <TabBar tabs={TABS} active={activeTab} onChange={setActiveTab} />
+
+          {activeTab === 'manual' ? (
+            <View className="flex-1 gap-2 px-3.5 pb-3.5 pt-3">
+              <EditableTimePickerCard
+                label="Preparation"
+                sublabel="Settle into stillness"
+                value={prepSeconds}
+                min={PREP_MIN}
+                max={PREP_MAX}
+                step={PREP_STEP}
+                unit="sec"
+                formatDisplay={(v) => String(v)}
+                formatEditing={(v) => String(v)}
+                onChange={setPrepSeconds}
+                testID="prep-picker"
+              />
+              <EditableTimePickerCard
+                label="Meditation"
+                sublabel="Jhanna practice"
+                value={meditationTime}
+                min={MED_MIN}
+                max={MED_MAX}
+                step={MED_STEP}
+                unit="min"
+                formatDisplay={(v) => String(v)}
+                formatEditing={(v) => String(v)}
+                onChange={setMeditationTime}
+                testID="meditation-picker"
+              />
+              <View className="flex-row gap-2.5">
+                <BellSelect label="Beginning bell" value={startBell} onChange={setStartBell} />
+                <BellSelect label="Finishing bell" value={endBell} onChange={setEndBell} />
+              </View>
+            </View>
+          ) : (
+            <ScrollView
+              className="flex-1"
+              contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 12, gap: 8 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {PREDEFINED_MEDITATIONS.map((m) => (
+                <PredefinedMeditationCard
+                  key={m.id}
+                  meditation={m}
+                  selected={m.id === selectedPredefId}
+                  onPress={handleSelectPredef}
+                />
+              ))}
+            </ScrollView>
+          )}
+        </View>
       </View>
 
-      <View className="px-5 pb-7">
-        <BeginButton onPress={handleBegin} />
+      <View className="px-5 pb-7 pt-4">
+        <BeginButton onPress={handleBegin} disabled={!isReady} />
       </View>
     </SafeAreaView>
   );

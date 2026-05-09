@@ -1,5 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { recordCompletedSession } from '../src/utils/session';
+import {
+  recordCompletedSession,
+  loadStorageData,
+  saveSettings,
+  saveSessionDefaults,
+  DEFAULT_SETTINGS,
+} from '../src/utils/session';
+import { DEFAULT_START_BELL, DEFAULT_END_BELL } from '../src/utils/bells';
 
 beforeEach(() => {
   AsyncStorage.clear();
@@ -66,6 +73,107 @@ describe('recordCompletedSession', () => {
     const result = await recordCompletedSession({ durationMinutes: 10 });
     expect(result.streak.current).toBe(4);
     expect(result.streak.longest).toBe(5);
+  });
+
+});
+
+describe('loadStorageData', () => {
+  let mem;
+  beforeEach(() => {
+    mem = {};
+    AsyncStorage.getItem.mockReset();
+    AsyncStorage.setItem.mockReset();
+    AsyncStorage.clear.mockReset();
+    AsyncStorage.getItem.mockImplementation((k) => Promise.resolve(mem[k] ?? null));
+    AsyncStorage.setItem.mockImplementation((k, v) => {
+      mem[k] = v;
+      return Promise.resolve();
+    });
+    AsyncStorage.clear.mockImplementation(() => {
+      Object.keys(mem).forEach((k) => delete mem[k]);
+      return Promise.resolve();
+    });
+  });
+
+  it('returns defaults when storage is empty', async () => {
+    const data = await loadStorageData();
+    expect(data.settings).toEqual({
+      prepSeconds: 60,
+      meditationTime: 10,
+      startBell: DEFAULT_START_BELL,
+      endBell: DEFAULT_END_BELL,
+    });
+    expect(data.sessionDefaults).toEqual({ lastPredefinedId: null });
+    expect(data.sessions).toEqual([]);
+  });
+
+  it('migrates legacy prepTime (minutes) into prepSeconds', async () => {
+    await AsyncStorage.setItem(
+      'settings',
+      JSON.stringify({ prepTime: 2, meditationTime: 15 })
+    );
+
+    const data = await loadStorageData();
+    expect(data.settings.prepSeconds).toBe(120);
+    expect(data.settings.prepTime).toBeUndefined();
+    expect(data.settings.meditationTime).toBe(15);
+    expect(data.settings.startBell).toBe(DEFAULT_START_BELL);
+    expect(data.settings.endBell).toBe(DEFAULT_END_BELL);
+
+    // migration result is persisted back
+    const persisted = JSON.parse(await AsyncStorage.getItem('settings'));
+    expect(persisted.prepSeconds).toBe(120);
+    expect(persisted.prepTime).toBeUndefined();
+  });
+
+  it('falls back to defaults if AsyncStorage throws', async () => {
+    AsyncStorage.getItem.mockRejectedValueOnce(new Error('boom'));
+    const data = await loadStorageData();
+    expect(data.settings.prepSeconds).toBe(60);
+    expect(data.settings.meditationTime).toBe(10);
+  });
+
+  it('substitutes default bell when stored bell name is unknown', async () => {
+    await AsyncStorage.setItem(
+      'settings',
+      JSON.stringify({ prepSeconds: 60, meditationTime: 10, startBell: 'Ghost', endBell: 'Phantom' })
+    );
+    const data = await loadStorageData();
+    expect(data.settings.startBell).toBe(DEFAULT_START_BELL);
+    expect(data.settings.endBell).toBe(DEFAULT_START_BELL); // unknown → default start
+  });
+});
+
+describe('saveSettings & saveSessionDefaults', () => {
+  let mem;
+  beforeEach(() => {
+    mem = {};
+    AsyncStorage.getItem.mockReset();
+    AsyncStorage.setItem.mockReset();
+    AsyncStorage.getItem.mockImplementation((k) => Promise.resolve(mem[k] ?? null));
+    AsyncStorage.setItem.mockImplementation((k, v) => {
+      mem[k] = v;
+      return Promise.resolve();
+    });
+  });
+
+  it('saveSettings persists settings to AsyncStorage', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, prepSeconds: 90 });
+    const raw = JSON.parse(await AsyncStorage.getItem('settings'));
+    expect(raw.prepSeconds).toBe(90);
+  });
+
+  it('saveSessionDefaults persists session defaults', async () => {
+    await saveSessionDefaults({ lastPredefinedId: 3 });
+    const raw = JSON.parse(await AsyncStorage.getItem('sessionDefaults'));
+    expect(raw.lastPredefinedId).toBe(3);
+  });
+});
+
+describe('legacy gap-day streak (kept)', () => {
+  beforeEach(() => {
+    AsyncStorage.clear();
+    jest.clearAllMocks();
   });
 
   it('resets streak to 1 when there is a gap day', async () => {
