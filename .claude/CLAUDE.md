@@ -72,11 +72,14 @@ A personal mobile meditation timer app built for daily use. No authentication, n
 }
 ```
 
+Sessions include both fully completed and early-ended (partial) sessions. `duration` always represents meditation time only — preparation time is never counted. A partial session is saved when the user confirms "End Session" via the stop confirmation modal; it is only saved if at least 1 second of meditation has elapsed (i.e. stopping during preparation saves nothing). Sub-minute meditations are rounded up to 1 minute.
+
 ## Streak Logic
-- A day counts if at least one completed session exists for that date
+- A day counts if at least one completed or partial session exists for that date
 - Streak increments if the user meditated yesterday and today
 - Streak resets to 1 if the user missed a full calendar day
 - Longest streak updates whenever current streak surpasses it
+- Partial sessions (ended early via Stop confirmation) count toward the streak
 
 ## Audio
 - Use two bell sound files: `bell_start.mp3` and `bell_end.mp3`

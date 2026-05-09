@@ -7,6 +7,7 @@ import CircularTimer from '../components/CircularTimer';
 import PhaseLabel from '../components/PhaseLabel';
 import PhaseDots from '../components/PhaseDots';
 import SessionControls from '../components/SessionControls';
+import StopConfirmModal from '../components/StopConfirmModal';
 import useAppStore from '../store/useAppStore';
 
 export default function SessionScreen({ route, navigation }) {
@@ -18,13 +19,14 @@ export default function SessionScreen({ route, navigation }) {
 
   const [elapsedSec, setElapsedSec] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [confirmingStop, setConfirmingStop] = useState(false);
+  const [stopModalVisible, setStopModalVisible] = useState(false);
   const [ringing, setRinging] = useState(false);
   const [phaseKey, setPhaseKey] = useState(0);
 
   const intervalRef = useRef(null);
-  const confirmTimerRef = useRef(null);
   const completedRef = useRef(false);
+  const endingRef = useRef(false);
+  const wasPausedBeforeStopRef = useRef(false);
 
   const { playStartBell, playEndBell } = useBells();
 
@@ -79,54 +81,64 @@ export default function SessionScreen({ route, navigation }) {
   useFocusEffect(
     useCallback(() => {
       const onBack = () => {
-        handleStopConfirm();
+        if (stopModalVisible) {
+          setStopModalVisible(false);
+          if (!wasPausedBeforeStopRef.current) setIsPaused(false);
+        } else {
+          wasPausedBeforeStopRef.current = isPaused;
+          setIsPaused(true);
+          setStopModalVisible(true);
+        }
         return true;
       };
       const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
       return () => sub.remove();
-    }, [elapsedSec, phase])
+    }, [stopModalVisible, isPaused])
   );
 
   const handlePauseResume = () => {
     setIsPaused((p) => !p);
-    setConfirmingStop(false);
   };
 
   const handleStop = () => {
+    wasPausedBeforeStopRef.current = isPaused;
     setIsPaused(true);
-    setConfirmingStop(true);
-    clearTimeout(confirmTimerRef.current);
-    confirmTimerRef.current = setTimeout(() => {
-      setConfirmingStop(false);
-      setIsPaused(false);
-    }, 3000);
+    setStopModalVisible(true);
   };
 
-  const handleStopConfirm = () => {
-    clearInterval(intervalRef.current);
-    clearTimeout(confirmTimerRef.current);
+  const handleContinue = () => {
+    setStopModalVisible(false);
+    if (!wasPausedBeforeStopRef.current) {
+      setIsPaused(false);
+    }
+  };
 
-    if (phase === 'meditation' && elapsedSec > prepSec) {
-      const meditatedSec = elapsedSec - prepSec;
-      const meditatedMinutes = Math.floor(meditatedSec / 60);
-      if (meditatedMinutes > 0) {
-        commitCompletedSession({ durationMinutes: meditatedMinutes }).then((result) => {
-          navigation.replace('Complete', {
-            duration: meditatedMinutes,
-            streakCount: result.streak.current,
-            date: new Date().toISOString(),
-          });
+  const handleEndSession = () => {
+    if (endingRef.current) return;
+    endingRef.current = true;
+
+    clearInterval(intervalRef.current);
+
+    const meditatedSec = Math.max(0, elapsedSec - prepSec);
+    if (meditatedSec > 0) {
+      const durationMinutes = Math.max(1, Math.ceil(meditatedSec / 60));
+      commitCompletedSession({ durationMinutes }).then((result) => {
+        navigation.replace('Complete', {
+          duration: durationMinutes,
+          streakCount: result.streak.current,
+          date: new Date().toISOString(),
         });
-        return;
-      }
+      });
+      return;
     }
 
+    // Stopped during prep with no meditation time — nothing to save
+    setStopModalVisible(false);
     navigation.popToTop();
   };
 
   useEffect(() => {
     return () => {
-      clearTimeout(confirmTimerRef.current);
       clearInterval(intervalRef.current);
     };
   }, []);
@@ -153,10 +165,14 @@ export default function SessionScreen({ route, navigation }) {
 
       <SessionControls
         isRunning={!isPaused}
-        confirmingStop={confirmingStop}
         onPauseResume={handlePauseResume}
         onStop={handleStop}
-        onStopConfirm={handleStopConfirm}
+      />
+
+      <StopConfirmModal
+        visible={stopModalVisible}
+        onConfirm={handleEndSession}
+        onCancel={handleContinue}
       />
     </View>
   );
