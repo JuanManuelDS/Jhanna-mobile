@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jhanna Timer — Home</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script type="text/babel" src="android-frame.jsx"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #1a1410;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Sans', sans-serif;
+    }
+    #root { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+
+    /* ── Screen transitions ── */
+    .screen-wrapper {
+      position: absolute; inset: 0;
+      transition: transform 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.4s ease;
+    }
+    .screen-wrapper.hidden-right { transform: translateX(100%); opacity: 0; pointer-events: none; }
+    .screen-wrapper.hidden-left  { transform: translateX(-30%); opacity: 0; pointer-events: none; }
+
+    /* ── App screen ── */
+    .app-screen {
+      width: 100%; height: 100%;
+      background: #F5E6D3;
+      display: flex; flex-direction: column;
+      overflow: hidden; position: relative;
+    }
+
+    /* ── Header ── */
+    .app-header {
+      padding: 40px 20px 8px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    /* ── Streak badge ── */
+    .streak-badge {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(200,169,110,0.18);
+      border: 1px solid rgba(200,169,110,0.35);
+      border-radius: 20px;
+      padding: 7px 14px 7px 10px;
+    }
+    .streak-count { font-size: 15px; font-weight: 600; color: #A0654A; letter-spacing: -0.3px; }
+    .streak-label { font-size: 11px; color: #C8A96E; font-weight: 400; margin-left: 2px; }
+
+    /* ── Stats button ── */
+    .stats-btn {
+      height: 38px;
+      background: rgba(160,101,74,0.1);
+      border: none; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 0 12px 0 10px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .stats-btn:active { background: rgba(160,101,74,0.2); }
+    .stats-btn-label { font-size: 12px; font-weight: 500; color: #A0654A; letter-spacing: 0.2px; }
+
+    /* ── Hero ── */
+    .hero-section {
+      flex: 1;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 0 28px; gap: 6px;
+      min-height: 0;
+    }
+    .greeting-text {
+      font-family: 'DM Serif Display', serif;
+      font-size: 24px; color: #A0654A;
+      text-align: center; line-height: 1.2; letter-spacing: -0.5px;
+    }
+    .greeting-text em { font-style: italic; color: #E8936A; }
+    .sub-text { font-size: 12px; color: #C8A96E; text-align: center; font-weight: 400; letter-spacing: 0.3px; }
+    .soft-divider { width: 40px; height: 1px; background: rgba(200,169,110,0.4); margin: 4px auto; }
+
+    /* ── Breathing orb ── */
+    .orb-container { display: flex; align-items: center; justify-content: center; margin: 0; }
+    .orb {
+      width: 90px; height: 90px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, rgba(232,147,106,0.3), rgba(212,184,86,0.15) 60%, transparent);
+      border: 1px solid rgba(232,147,106,0.25);
+      display: flex; align-items: center; justify-content: center;
+      animation: breathe 6s ease-in-out infinite;
+      position: relative;
+    }
+    .orb::before {
+      content: '';
+      position: absolute;
+      width: 62px; height: 62px; border-radius: 50%;
+      background: radial-gradient(circle at 40% 40%, rgba(232,147,106,0.2), rgba(212,184,86,0.1));
+      border: 1px solid rgba(232,147,106,0.2);
+      animation: breathe 6s ease-in-out infinite 0.3s;
+    }
+    .orb-lotus { font-size: 22px; z-index: 1; }
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); opacity: 0.7; }
+      50%       { transform: scale(1.08); opacity: 1; }
+    }
+
+    /* ── Tab box ── */
+    .tab-box-wrapper {
+      padding: 0 20px;
+      flex-shrink: 0;
+    }
+    .tab-box {
+      background: rgba(255,248,240,0.8);
+      border: 1px solid rgba(200,169,110,0.25);
+      border-radius: 20px;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      height: 290px;
+    }
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid rgba(200,169,110,0.18);
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 12px 0 10px;
+      background: none; border: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px; font-weight: 500;
+      letter-spacing: 0.4px;
+      color: rgba(160,101,74,0.4);
+      cursor: pointer;
+      position: relative;
+      transition: color 0.25s ease;
+    }
+    .tab-btn.active { color: #A0654A; }
+    .tab-btn::after {
+      content: '';
+      position: absolute; bottom: -1px; left: 16%; right: 16%;
+      height: 2px; border-radius: 1px;
+      background: transparent;
+      transition: background 0.25s ease;
+    }
+    .tab-btn.active::after { background: #E8936A; }
+
+    .tab-content {
+      position: relative;
+      overflow: hidden;
+      flex: 1;
+      min-height: 0;
+    }
+    .tab-panel {
+      transition: opacity 0.25s ease;
+      height: 100%;
+    }
+    .tab-panel.hidden {
+      display: none;
+    }
+
+    /* ── Time pickers (inside tab box) ── */
+    .pickers-section { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; height: 100%; }
+
+    /* ── Bell dropdowns ── */
+    .bell-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .bell-picker {
+      background: rgba(245,230,211,0.6);
+      border: 1px solid rgba(200,169,110,0.18);
+      border-radius: 16px;
+      padding: 10px 14px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .bell-label {
+      font-size: 10px; color: #C8A96E; font-weight: 500;
+      letter-spacing: 0.6px; text-transform: uppercase;
+    }
+    .bell-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background: transparent;
+      border: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px; font-weight: 500; color: #A0654A;
+      cursor: pointer;
+      padding: 0;
+      background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23C8A96E' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right center;
+      padding-right: 16px;
+    }
+    .bell-select:focus { outline: none; }
+    .picker-card {
+      background: rgba(245,230,211,0.6);
+      border: 1px solid rgba(200,169,110,0.18);
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .picker-label-group { display: flex; flex-direction: column; gap: 2px; }
+    .picker-label { font-size: 11px; color: #C8A96E; font-weight: 500; letter-spacing: 0.8px; text-transform: uppercase; }
+    .picker-sublabel { font-size: 11px; color: rgba(160,101,74,0.5); font-weight: 400; }
+    .picker-controls { display: flex; align-items: center; gap: 14px; }
+    .picker-btn {
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      border: 1.5px solid rgba(200,169,110,0.5);
+      background: transparent;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 16px; font-weight: 300; color: #A0654A;
+      transition: all 0.15s ease; line-height: 1;
+    }
+    .picker-btn:active { background: rgba(232,147,106,0.15); border-color: #E8936A; }
+    .picker-value { min-width: 52px; text-align: center; }
+    .picker-number { font-family: 'DM Serif Display', serif; font-size: 28px; color: #A0654A; line-height: 1; display: block; }
+    .picker-unit { font-size: 11px; color: #C8A96E; font-weight: 400; display: block; text-align: center; margin-top: 1px; }
+
+    /* ── Begin button ── */
+    .begin-section { padding: 0 20px 20px; }
+    .begin-btn {
+      width: 100%;
+      background: #E8936A;
+      border: none; border-radius: 22px;
+      padding: 16px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 8px 24px rgba(232,147,106,0.35);
+    }
+    .begin-btn:active { transform: scale(0.98); box-shadow: 0 4px 12px rgba(232,147,106,0.3); }
+    .begin-btn-text { font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 500; color: #FFF8F0; letter-spacing: 0.3px; }
+
+    /* ── Stats screen ── */
+    .stats-screen { width: 100%; height: 100%; background: #F5E6D3; display: flex; flex-direction: column; overflow: hidden; }
+    .stats-header { padding: 40px 20px 12px; display: flex; align-items: center; gap: 12px; }
+    .back-btn {
+      width: 38px; height: 38px;
+      background: rgba(160,101,74,0.1);
+      border: none; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+    .stats-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #A0654A; letter-spacing: -0.3px; }
+    .stats-body { padding: 8px 20px 24px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; flex: 1; }
+    .stat-card { background: rgba(255,248,240,0.8); border: 1px solid rgba(200,169,110,0.25); border-radius: 20px; padding: 18px 20px; }
+    .stat-card-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.9px; color: #C8A96E; font-weight: 500; margin-bottom: 10px; }
+    .stat-big { font-family: 'DM Serif Display', serif; font-size: 42px; color: #A0654A; line-height: 1; }
+    .stat-big-unit { font-size: 14px; color: #C8A96E; font-weight: 400; margin-left: 4px; }
+    .stat-sub { font-size: 11px; color: #C8A96E; margin-top: 4px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .mini-bar-group { display: flex; align-items: flex-end; gap: 5px; height: 60px; margin-top: 8px; }
+    .mini-bar { flex: 1; border-radius: 5px 5px 0 0; background: rgba(232,147,106,0.2); position: relative; overflow: hidden; }
+    .mini-bar-fill { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, #E8936A, rgba(212,184,86,0.6)); border-radius: 5px 5px 0 0; }
+    .mini-bar-label { font-size: 8px; color: #C8A96E; text-align: center; margin-top: 4px; }
+
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 4px; }
+    .cal-day { aspect-ratio: 1; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 500; color: rgba(160,101,74,0.35); }
+    .cal-day.done   { background: rgba(232,147,106,0.2); color: #E8936A; }
+    .cal-day.today  { background: #E8936A; color: #FFF8F0; }
+    .cal-day.streak { background: rgba(212,184,86,0.25); color: #A0654A; }
+
+    /* ── Predefined list ── */
+    .predef-section { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; height: 100%; }
+    .predef-card {
+      background: rgba(245,230,211,0.6);
+      border: 1px solid rgba(200,169,110,0.18);
+      border-radius: 16px;
+      padding: 12px 14px 12px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+    .predef-card:active { background: rgba(245,230,211,0.9); border-color: rgba(232,147,106,0.45); }
+    .predef-card.selected {
+      border-color: #E8936A;
+      background: rgba(245,230,211,0.9);
+      box-shadow: 0 2px 10px rgba(232,147,106,0.12);
+    }
+    .predef-info { display: flex; flex-direction: column; gap: 3px; }
+    .predef-name {
+      font-size: 13px; font-weight: 500; color: #A0654A; letter-spacing: -0.1px;
+    }
+    .predef-meta {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 11px; color: #C8A96E; font-weight: 400;
+    }
+    .predef-dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(200,169,110,0.5); }
+    .predef-select-btn {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(200,169,110,0.45);
+      background: transparent;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      flex-shrink: 0;
+    }
+    .predef-card.selected .predef-select-btn {
+      background: #E8936A;
+      border-color: #E8936A;
+    }
+    .predef-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex; flex-direction: column; gap: 8px;
+      padding-right: 2px;
+    }
+    .predef-scroll::-webkit-scrollbar { width: 3px; }
+    .predef-scroll::-webkit-scrollbar-thumb { background: rgba(200,169,110,0.3); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useRef } = React;
+
+// ── Icons ──────────────────────────────────────────────────────────
+const FlameIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+    <path d="M12 2C12 2 6 8 6 13.5C6 17.09 8.69 20 12 20C15.31 20 18 17.09 18 13.5C18 8 12 2 12 2Z" fill="#E8936A" opacity="0.9"/>
+    <path d="M12 8C12 8 9 11.5 9 14C9 15.65 10.34 17 12 17C13.66 17 15 15.65 15 14C15 11.5 12 8 12 8Z" fill="#D4B856" opacity="0.85"/>
+  </svg>
+);
+
+const BarChartIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+    <rect x="3"  y="14" width="4" height="7" rx="1.5" fill="#A0654A" opacity="0.7"/>
+    <rect x="10" y="9"  width="4" height="12" rx="1.5" fill="#A0654A" opacity="0.85"/>
+    <rect x="17" y="5"  width="4" height="16" rx="1.5" fill="#A0654A"/>
+  </svg>
+);
+
+const BackIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+    <path d="M19 12H5M5 12L11 6M5 12L11 18" stroke="#A0654A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const PlayIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+    <path d="M6 4L20 12L6 20V4Z" fill="rgba(255,248,240,0.85)"/>
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+    <path d="M5 12L10 17L19 7" stroke="#E8936A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+// ── Time Picker ────────────────────────────────────────────────────
+function TimePicker({ label, sublabel, value, onChange, min = 0.5, max = 120 }) {
+  const intervalRef = useRef(null);
+
+  const step = (v, dir) => {
+    if (v === 0.5 && dir === 1) return 1;
+    if (v === 1  && dir === -1) return 0.5;
+    return Math.min(max, Math.max(min, v + dir));
+  };
+
+  const startPress = (dir) => {
+    onChange(v => step(v, dir));
+    intervalRef.current = setInterval(() => {
+      onChange(v => step(v, dir));
+    }, 150);
+  };
+  const endPress = () => clearInterval(intervalRef.current);
+
+  const displayNumber = value === 0.5 ? '30' : value;
+  const displayUnit   = value === 0.5 ? 'sec' : 'min';
+
+  return (
+    <div className="picker-card">
+      <div className="picker-label-group">
+        <span className="picker-label">{label}</span>
+        {sublabel && <span className="picker-sublabel">{sublabel}</span>}
+      </div>
+      <div className="picker-controls">
+        <button
+          className="picker-btn"
+          onMouseDown={() => startPress(-1)} onMouseUp={endPress} onMouseLeave={endPress}
+          onTouchStart={() => startPress(-1)} onTouchEnd={endPress}
+          style={{ opacity: value <= min ? 0.35 : 1 }}
+        >−</button>
+        <div className="picker-value">
+          <span className="picker-number">{displayNumber}</span>
+          <span className="picker-unit">{displayUnit}</span>
+        </div>
+        <button
+          className="picker-btn"
+          onMouseDown={() => startPress(1)} onMouseUp={endPress} onMouseLeave={endPress}
+          onTouchStart={() => startPress(1)} onTouchEnd={endPress}
+          style={{ opacity: value >= max ? 0.35 : 1 }}
+        >+</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Predefined Meditations ─────────────────────────────────────────
+const PREDEF_MEDITATIONS = [
+  { id: 1, name: 'Morning Calm',      prep: 1, duration: 10, desc: 'Gentle start' },
+  { id: 2, name: 'Deep Jhanna',       prep: 2, duration: 30, desc: 'Extended focus' },
+  { id: 3, name: 'Quick Reset',       prep: 0.5, duration: 5,  desc: 'Brief centering' },
+  { id: 4, name: 'Body Scan',         prep: 1, duration: 15, desc: 'Full awareness' },
+  { id: 5, name: 'Evening Wind-down', prep: 2, duration: 20, desc: 'Release the day' },
+  { id: 6, name: 'Loving Kindness',   prep: 1, duration: 20, desc: 'Metta practice' },
+];
+
+const PredefCheckIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+    <path d="M5 12L10 17L19 7" stroke="#FFF8F0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+// ── Bell options ───────────────────────────────────────────────────
+const BELL_OPTIONS = [
+  'Tibetan Bowl',
+  'Singing Bowl',
+  'Soft Chime',
+  'Temple Bell',
+  'Wind Chime',
+  'None',
+];
+
+// ── Bell Select ────────────────────────────────────────────────────
+function BellSelect({ label, value, onChange }) {
+  return (
+    <div className="bell-picker">
+      <span className="bell-label">{label}</span>
+      <select className="bell-select" value={value} onChange={e => onChange(e.target.value)}>
+        {BELL_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+      </select>
+    </div>
+  );
+}
+
+// ── Home Screen ────────────────────────────────────────────────────
+function HomeScreen({ onNavigate, streak, prepTime, setPrepTime, medTime, setMedTime }) {
+  const [beginning, setBeginning] = useState(false);
+  const [activeTab, setActiveTab] = useState('manual');
+  const [selectedPredef, setSelectedPredef] = useState(null);
+  const [startBell, setStartBell] = useState('Tibetan Bowl');
+  const [endBell, setEndBell] = useState('Singing Bowl');
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  const handleBegin = () => {
+    setBeginning(true);
+    setTimeout(() => setBeginning(false), 800);
+  };
+
+  const handleSelectPredef = (med) => {
+    setSelectedPredef(med.id === selectedPredef ? null : med.id);
+  };
+
+  const isReadyToBegin = activeTab === 'manual' || selectedPredef !== null;
+
+  return (
+    <div className="app-screen">
+      {/* Header */}
+      <div className="app-header">
+        <div className="streak-badge">
+          <FlameIcon />
+          <span className="streak-count">{streak}</span>
+          <span className="streak-label">day streak</span>
+        </div>
+        <button className="stats-btn" onClick={() => onNavigate('stats')}>
+          <span className="stats-btn-label">Statistics</span>
+          <BarChartIcon />
+        </button>
+      </div>
+
+      {/* Hero */}
+      <div className="hero-section">
+        <div className="orb-container">
+          <div className="orb">
+            <span className="orb-lotus">🪷</span>
+          </div>
+        </div>
+        <div className="soft-divider" />
+        <p className="greeting-text">{greeting},<br /><em>be still.</em></p>
+        <p className="sub-text">Your practice awaits</p>
+      </div>
+
+      {/* Tab Box */}
+      <div className="tab-box-wrapper">
+        <div className="tab-box">
+          <div className="tab-bar">
+            <button className={`tab-btn ${activeTab === 'manual' ? 'active' : ''}`} onClick={() => setActiveTab('manual')}>
+              Minute hand
+            </button>
+            <button className={`tab-btn ${activeTab === 'predef' ? 'active' : ''}`} onClick={() => setActiveTab('predef')}>
+              Predefined
+            </button>
+          </div>
+
+          <div className="tab-content">
+            {/* Manual pickers tab */}
+            <div className={`tab-panel ${activeTab !== 'manual' ? 'hidden' : ''}`}>
+              <div className="pickers-section">
+                <TimePicker
+                  label="Preparation"
+                  sublabel="Settle into stillness"
+                  value={prepTime}
+                  onChange={setPrepTime}
+                  min={0.5} max={30}
+                />
+                <TimePicker
+                  label="Meditation"
+                  sublabel="Jhanna practice"
+                  value={medTime}
+                  onChange={setMedTime}
+                  min={0.5} max={120}
+                />
+                <div className="bell-row">
+                  <BellSelect label="Beginning bell" value={startBell} onChange={setStartBell} />
+                  <BellSelect label="Finishing bell" value={endBell} onChange={setEndBell} />
+                </div>
+              </div>
+            </div>
+
+            {/* Predefined tab */}
+            <div className={`tab-panel ${activeTab !== 'predef' ? 'hidden' : ''}`}>
+              <div className="predef-section">
+                <div className="predef-scroll">
+                  {PREDEF_MEDITATIONS.map(med => (
+                    <div
+                      key={med.id}
+                      className={`predef-card ${selectedPredef === med.id ? 'selected' : ''}`}
+                      onClick={() => handleSelectPredef(med)}
+                    >
+                      <div className="predef-info">
+                        <span className="predef-name">{med.name}</span>
+                        <div className="predef-meta">
+                          <span>{med.duration} min</span>
+                          <span className="predef-dot"></span>
+                          <span>{med.prep === 0.5 ? '30s' : med.prep + ' min'} prep</span>
+                        </div>
+                      </div>
+                      <button className="predef-select-btn" onClick={(e) => { e.stopPropagation(); handleSelectPredef(med); }}>
+                        {selectedPredef === med.id ? <PredefCheckIcon /> : null}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Begin */}
+      <div className="begin-section">
+        <button
+          className="begin-btn"
+          onClick={handleBegin}
+          style={{
+            ...(beginning ? { transform: 'scale(0.98)', boxShadow: '0 4px 12px rgba(232,147,106,0.3)' } : {}),
+            ...(isReadyToBegin ? {} : { opacity: 0.5, pointerEvents: 'none' }),
+          }}
+        >
+          <span className="begin-btn-text">{beginning ? 'Starting…' : 'Begin Session'}</span>
+          {!beginning && <PlayIcon />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Stats Screen ───────────────────────────────────────────────────
+function StatsScreen({ onNavigate, streak }) {
+  const weekData  = [8, 12, 0, 15, 10, 0, 20];
+  const weekMax   = Math.max(...weekData);
+  const dayLabels = ['M','T','W','T','F','S','S'];
+
+  const calDays = Array.from({ length: 28 }, (_, i) => {
+    if (i === 27) return 'today';
+    const r = Math.random();
+    if (i >= 21) return r > 0.35 ? 'streak' : 'empty';
+    return r > 0.4 ? 'done' : 'empty';
+  });
+
+  return (
+    <div className="stats-screen">
+      <div className="stats-header">
+        <button className="back-btn" onClick={() => onNavigate('home')}><BackIcon /></button>
+        <span className="stats-title">Your Practice</span>
+      </div>
+
+      <div className="stats-body">
+        <div className="two-col">
+          <div className="stat-card">
+            <div className="stat-card-title">Current Streak</div>
+            <div><span className="stat-big">{streak}</span><span className="stat-big-unit">days</span></div>
+            <div className="stat-sub">🔥 Keep it going</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-title">This Month</div>
+            <div><span className="stat-big">147</span><span className="stat-big-unit">min</span></div>
+            <div className="stat-sub">↑ 12% from last</div>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-card-title">This Week</div>
+          <div className="mini-bar-group">
+            {weekData.map((v, i) => (
+              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div className="mini-bar" style={{ width: '100%', height: 60, position: 'relative' }}>
+                  <div className="mini-bar-fill" style={{ height: weekMax > 0 ? `${(v / weekMax) * 100}%` : '0%' }} />
+                </div>
+                <div className="mini-bar-label">{dayLabels[i]}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-card-title">Last 28 Days</div>
+          <div className="calendar-grid">
+            {calDays.map((state, i) => (
+              <div key={i} className={`cal-day${state === 'done' ? ' done' : state === 'today' ? ' today' : state === 'streak' ? ' streak' : ''}`}>
+                {(state === 'done' || state === 'today') && <CheckIcon />}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-card-title">Total Meditation Time</div>
+          <div><span className="stat-big">24</span><span className="stat-big-unit">hours</span></div>
+          <div className="stat-sub">Since you started your practice</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── App ────────────────────────────────────────────────────────────
+function App() {
+  const [screen,   setScreen]   = useState('home');
+  const [prepTime, setPrepTime] = useState(0.5); // 30 seconds
+  const [medTime,  setMedTime]  = useState(10);
+  const streak = 14;
+
+  return (
+    <AndroidDevice dark={false} keyboard={false}>
+      <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+        <div className={`screen-wrapper ${screen === 'home' ? '' : 'hidden-left'}`}>
+          <HomeScreen
+            onNavigate={setScreen}
+            streak={streak}
+            prepTime={prepTime} setPrepTime={setPrepTime}
+            medTime={medTime}   setMedTime={setMedTime}
+          />
+        </div>
+        <div className={`screen-wrapper ${screen === 'stats' ? '' : 'hidden-right'}`}>
+          <StatsScreen onNavigate={setScreen} streak={streak} />
+        </div>
+      </div>
+    </AndroidDevice>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

@@ -11,8 +11,16 @@ import StopConfirmModal from '../components/StopConfirmModal';
 import useAppStore from '../store/useAppStore';
 
 export default function SessionScreen({ route, navigation }) {
-  const { prepTime = 1, meditationTime = 10 } = route.params ?? {};
-  const prepSec = prepTime * 60;
+  const {
+    prepSeconds,
+    prepTime,
+    meditationTime = 10,
+    startBell,
+    endBell,
+  } = route.params ?? {};
+  const prepSec = typeof prepSeconds === 'number'
+    ? prepSeconds
+    : (prepTime ?? 1) * 60;
   const medSec = meditationTime * 60;
 
   const commitCompletedSession = useAppStore((s) => s.commitCompletedSession);
@@ -28,7 +36,7 @@ export default function SessionScreen({ route, navigation }) {
   const endingRef = useRef(false);
   const wasPausedBeforeStopRef = useRef(false);
 
-  const { playStartBell, playEndBell } = useBells();
+  const { playStartBell, playEndBell } = useBells({ startBell, endBell });
 
   const { phase, remainingSeconds } = phaseAt(prepSec, medSec, elapsedSec);
 

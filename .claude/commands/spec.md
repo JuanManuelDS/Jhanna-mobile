@@ -21,8 +21,8 @@ Then save the spec file to disk and print a short summary of what you did.
 
 ## Step 1. Check the current branch
 
-Check the current Git branch, and abort this entire process if there are any uncommitted, unstaged, or untracked files in the working
-directory. Tell the user to commit or stash changes before proceeding, and DO NOT GO ANY FURTHER.
+Check the current Git branch, if there are uncommited changes ask the user before continuing with the process if he wants to abort or continue.
+ DO NOT GO ANY FURTHER UNTIL HE RESPONDS.
 
 ## Step 2. Parse the arguments
 
