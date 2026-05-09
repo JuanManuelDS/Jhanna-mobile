@@ -7,10 +7,7 @@ export default function SessionRow({ session }) {
   const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
   return (
-    <View
-      className="mb-2 flex-row items-center gap-2.5 rounded-xl bg-card px-3 py-2.5"
-      style={{ borderLeftWidth: 3.5, borderLeftColor: '#C8A96E' }}
-    >
+    <View className="mb-2 flex-row items-center gap-2.5 rounded-xl bg-card px-3 py-2.5">
       <View className="h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sand">
         <MaterialCommunityIcons name="clock-outline" size={16} color="#A0654A" />
       </View>
