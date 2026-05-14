@@ -1,7 +1,21 @@
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
 import HomeScreen from '../src/screens/HomeScreen';
 import { getGreeting } from '../src/utils/greeting';
-import { DEFAULT_START_BELL, DEFAULT_END_BELL } from '../src/utils/bells';
+
+jest.mock('../src/utils/predefinedMeditations', () => {
+  const actual = jest.requireActual('../src/utils/predefinedMeditations');
+  return {
+    ...actual,
+    // Default to a never-resolving promise so tests that don't await it
+    // don't trigger uncontrolled setState. Override per-test as needed.
+    getPredefinedAudioDurationMs: jest.fn(() => new Promise(() => {})),
+  };
+});
+
+const {
+  getPredefinedAudioDurationMs,
+  _resetPredefinedAudioDurationCache,
+} = require('../src/utils/predefinedMeditations');
 
 const mockNavigation = { navigate: jest.fn() };
 
@@ -20,8 +34,10 @@ jest.mock('react-native-safe-area-context', () => {
 const mockUpdateSettings = jest.fn();
 const mockUpdateSessionDefaults = jest.fn();
 
+const mockStoreOverrides = { current: {} };
+
 jest.mock('../src/store/useAppStore', () => {
-  const store = {
+  const baseStore = {
     sessions: [],
     streak: { current: 14, longest: 31 },
     settings: {
@@ -37,7 +53,10 @@ jest.mock('../src/store/useAppStore', () => {
     updateSessionDefaults: (...args) => mockUpdateSessionDefaults(...args),
     commitCompletedSession: jest.fn(),
   };
-  return { __esModule: true, default: jest.fn((selector) => selector(store)) };
+  return {
+    __esModule: true,
+    default: jest.fn((selector) => selector({ ...baseStore, ...mockStoreOverrides.current })),
+  };
 });
 
 jest.mock('../src/hooks/useBells', () => ({
@@ -48,6 +67,11 @@ jest.mock('../src/hooks/useBells', () => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockStoreOverrides.current = {};
+  _resetPredefinedAudioDurationCache();
+  // Reset the mock to a never-resolving promise so the default behavior
+  // does not trigger uncontrolled setState in tests that don't await it.
+  getPredefinedAudioDurationMs.mockImplementation(() => new Promise(() => {}));
 });
 
 describe('HomeScreen', () => {
@@ -111,27 +135,73 @@ describe('HomeScreen', () => {
     expect(btn.props.accessibilityState?.disabled).toBe(true);
   });
 
-  it('selects a predefined meditation and Begin sends those params', () => {
+  it('selects Day 1 and Begin navigates with predefined payload (60 min, day kind)', async () => {
+    getPredefinedAudioDurationMs.mockResolvedValue(33 * 60 * 1000);
     const { getByLabelText, getByText } = render(<HomeScreen navigation={mockNavigation} />);
     fireEvent.press(getByText('Predefined'));
-    fireEvent.press(getByLabelText('Morning Calm'));
+    fireEvent.press(getByLabelText('Day 1 Chantings'));
 
-    expect(mockUpdateSessionDefaults).toHaveBeenCalledWith({ lastPredefinedId: 1 });
+    expect(mockUpdateSessionDefaults).toHaveBeenCalledWith({ lastPredefinedId: 'day-1' });
 
-    fireEvent.press(getByLabelText('Begin Session'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('Session', {
-      prepSeconds: 60,
-      meditationTime: 10,
-      startBell: 'Aguda',
-      endBell: 'Grave',
+    await act(async () => {
+      fireEvent.press(getByLabelText('Begin Session'));
+    });
+
+    await waitFor(() => {
+      expect(mockNavigation.navigate).toHaveBeenCalledWith(
+        'Session',
+        expect.objectContaining({
+          prepSeconds: 30,
+          meditationTime: 60,
+          predefined: expect.objectContaining({
+            id: 'day-1',
+            kind: 'day',
+            endsWithAudio: false,
+            audio: expect.anything(),
+            audioDurationSec: 33 * 60,
+            audioStartOffsetSec: 27 * 60,
+          }),
+        })
+      );
+    });
+  });
+
+  it('selects Short Instructions and Begin navigates with endsWithAudio: true', async () => {
+    getPredefinedAudioDurationMs.mockResolvedValue(7 * 60 * 1000);
+    const { getByLabelText, getByText } = render(<HomeScreen navigation={mockNavigation} />);
+    fireEvent.press(getByText('Predefined'));
+    fireEvent.press(getByLabelText('Short Instructions'));
+
+    expect(mockUpdateSessionDefaults).toHaveBeenCalledWith({
+      lastPredefinedId: 'short-instructions',
+    });
+
+    await act(async () => {
+      fireEvent.press(getByLabelText('Begin Session'));
+    });
+
+    await waitFor(() => {
+      expect(mockNavigation.navigate).toHaveBeenCalledWith(
+        'Session',
+        expect.objectContaining({
+          prepSeconds: 30,
+          meditationTime: 7,
+          predefined: expect.objectContaining({
+            id: 'short-instructions',
+            kind: 'short',
+            endsWithAudio: true,
+            audioStartOffsetSec: 0,
+          }),
+        })
+      );
     });
   });
 
   it('tapping the same predefined again deselects it (toggle)', () => {
     const { getByLabelText, getByText } = render(<HomeScreen navigation={mockNavigation} />);
     fireEvent.press(getByText('Predefined'));
-    fireEvent.press(getByLabelText('Morning Calm'));
-    fireEvent.press(getByLabelText('Morning Calm'));
+    fireEvent.press(getByLabelText('Day 1 Chantings'));
+    fireEvent.press(getByLabelText('Day 1 Chantings'));
     expect(mockUpdateSessionDefaults).toHaveBeenLastCalledWith({ lastPredefinedId: null });
   });
 
@@ -142,6 +212,18 @@ describe('HomeScreen', () => {
     fireEvent.press(getByText('Manual'));
     expect(getByText('60')).toBeTruthy();
     expect(getByLabelText('Beginning bell: Aguda')).toBeTruthy();
+  });
+
+  it('persisted lastPredefinedId not in catalog is treated as no selection', async () => {
+    mockStoreOverrides.current = { sessionDefaults: { lastPredefinedId: 'legacy-id' } };
+    const { getByLabelText, getByText } = render(<HomeScreen navigation={mockNavigation} />);
+    fireEvent.press(getByText('Predefined'));
+    const card = getByLabelText('Day 1 Chantings');
+    expect(card.props.accessibilityState?.selected).toBeFalsy();
+    // Stale value is cleared in storage on mount.
+    await waitFor(() => {
+      expect(mockUpdateSessionDefaults).toHaveBeenCalledWith({ lastPredefinedId: null });
+    });
   });
 
   describe('greeting', () => {

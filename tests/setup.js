@@ -69,8 +69,15 @@ jest.mock('expo-av', () => ({
           sound: {
             playAsync: jest.fn(() => Promise.resolve()),
             replayAsync: jest.fn(() => Promise.resolve()),
+            pauseAsync: jest.fn(() => Promise.resolve()),
+            stopAsync: jest.fn(() => Promise.resolve()),
             unloadAsync: jest.fn(() => Promise.resolve()),
+            setOnPlaybackStatusUpdate: jest.fn(),
+            getStatusAsync: jest.fn(() =>
+              Promise.resolve({ isLoaded: true, durationMillis: 7 * 60 * 1000 })
+            ),
           },
+          status: { durationMillis: 7 * 60 * 1000 },
         })
       ),
     },

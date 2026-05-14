@@ -1,61 +1,156 @@
+export const PREDEFINED_KIND = {
+  SHORT_INSTRUCTIONS: 'short',
+  DAY_CHANTING: 'day',
+};
+
+const PREP_SECONDS = 30;
+const DAY_TOTAL_SECONDS = 60 * 60;
+
 export const PREDEFINED_MEDITATIONS = [
   {
-    id: 1,
-    name: 'Morning Calm',
-    prepTime: 60,
-    meditationTime: 10,
-    startBell: 'Aguda',
-    endBell: 'Grave',
-    description: 'Gentle start to your day',
+    id: 'short-instructions',
+    name: 'Short Instructions',
+    kind: PREDEFINED_KIND.SHORT_INSTRUCTIONS,
+    prepTime: PREP_SECONDS,
+    meditationTime: null,
+    audio: require('../../assets/audios/Short-Instr_English_Group Sitting_GroupSitting_Janani_2001.mp3'),
   },
   {
-    id: 2,
-    name: 'Quick Reset',
-    prepTime: 30,
-    meditationTime: 5,
-    startBell: 'Suave',
-    endBell: 'Suave',
-    description: 'Brief centering between tasks',
+    id: 'day-1',
+    name: 'Day 1 Chantings',
+    kind: PREDEFINED_KIND.DAY_CHANTING,
+    prepTime: PREP_SECONDS,
+    meditationTime: 60,
+    audio: require('../../assets/audios/Day01_Morning_Chantings_Chanting_10day.mp3'),
   },
   {
-    id: 3,
-    name: 'Deep Jhanna',
-    prepTime: 120,
-    meditationTime: 30,
-    startBell: 'Grave',
-    endBell: 'Larga',
-    description: 'Extended absorption practice',
+    id: 'day-2',
+    name: 'Day 2 Chantings',
+    kind: PREDEFINED_KIND.DAY_CHANTING,
+    prepTime: PREP_SECONDS,
+    meditationTime: 60,
+    audio: require('../../assets/audios/Day02_Morning_Chantings_Chanting_10day.mp3'),
   },
   {
-    id: 4,
-    name: 'Body Scan',
-    prepTime: 60,
-    meditationTime: 15,
-    startBell: 'Media',
-    endBell: 'Grave',
-    description: 'Full awareness through the body',
+    id: 'day-3',
+    name: 'Day 3 Chantings',
+    kind: PREDEFINED_KIND.DAY_CHANTING,
+    prepTime: PREP_SECONDS,
+    meditationTime: 60,
+    audio: require('../../assets/audios/Day03_Morning_Chantings_Chanting_10day.mp3'),
   },
   {
-    id: 5,
-    name: 'Loving Kindness',
-    prepTime: 60,
-    meditationTime: 20,
-    startBell: 'Suave',
-    endBell: 'Media',
-    description: 'Metta practice',
+    id: 'day-4',
+    name: 'Day 4 Chantings',
+    kind: PREDEFINED_KIND.DAY_CHANTING,
+    prepTime: PREP_SECONDS,
+    meditationTime: 60,
+    audio: require('../../assets/audios/Day04_Morning_Chantings_Chanting_10day.mp3'),
   },
   {
-    id: 6,
-    name: 'Evening Wind-down',
-    prepTime: 120,
-    meditationTime: 20,
-    startBell: 'Grave',
-    endBell: 'Larga',
-    description: 'Release the day',
+    id: 'day-5',
+    name: 'Day 5 Chantings',
+    kind: PREDEFINED_KIND.DAY_CHANTING,
+    prepTime: PREP_SECONDS,
+    meditationTime: 60,
+    audio: require('../../assets/audios/Day05_Morning_Chantings_Chanting_10day.mp3'),
+  },
+  {
+    id: 'day-6',
+    name: 'Day 6 Chantings',
+    kind: PREDEFINED_KIND.DAY_CHANTING,
+    prepTime: PREP_SECONDS,
+    meditationTime: 60,
+    audio: require('../../assets/audios/Day06_Morning_Chantings_Chanting_10day.mp3'),
+  },
+  {
+    id: 'day-7',
+    name: 'Day 7 Chantings',
+    kind: PREDEFINED_KIND.DAY_CHANTING,
+    prepTime: PREP_SECONDS,
+    meditationTime: 60,
+    audio: require('../../assets/audios/Day07_Morning_Chantings_Chanting_10day.mp3'),
+  },
+  {
+    id: 'day-8',
+    name: 'Day 8 Chantings',
+    kind: PREDEFINED_KIND.DAY_CHANTING,
+    prepTime: PREP_SECONDS,
+    meditationTime: 60,
+    audio: require('../../assets/audios/Day08_Morning_Chantings_Chanting_10day.mp3'),
+  },
+  {
+    id: 'day-9',
+    name: 'Day 9 Chantings',
+    kind: PREDEFINED_KIND.DAY_CHANTING,
+    prepTime: PREP_SECONDS,
+    meditationTime: 60,
+    audio: require('../../assets/audios/Day09_Morning_Chantings_Chanting_10day.mp3'),
+  },
+  {
+    id: 'day-10',
+    name: 'Day 10 Chantings',
+    kind: PREDEFINED_KIND.DAY_CHANTING,
+    prepTime: PREP_SECONDS,
+    meditationTime: 60,
+    audio: require('../../assets/audios/Day10_Morning_Chantings_Chanting_10day.mp3'),
   },
 ];
 
 export function getPredefinedById(id) {
   if (id == null) return null;
   return PREDEFINED_MEDITATIONS.find((m) => m.id === id) ?? null;
+}
+
+export function computeAudioStartOffsetSec(kind, audioDurationSec) {
+  if (kind === PREDEFINED_KIND.SHORT_INSTRUCTIONS) return 0;
+  if (kind === PREDEFINED_KIND.DAY_CHANTING) {
+    if (typeof audioDurationSec !== 'number' || audioDurationSec < 0) return 0;
+    return Math.max(0, DAY_TOTAL_SECONDS - audioDurationSec);
+  }
+  return 0;
+}
+
+const _durationCacheMs = new Map();
+const _inflight = new Map();
+
+export async function getPredefinedAudioDurationMs(id) {
+  if (_durationCacheMs.has(id)) return _durationCacheMs.get(id);
+  if (_inflight.has(id)) return _inflight.get(id);
+  const m = getPredefinedById(id);
+  if (!m) return null;
+
+  const promise = (async () => {
+    const { Audio } = require('expo-av');
+    let sound;
+    try {
+      const created = await Audio.Sound.createAsync(m.audio, { shouldPlay: false });
+      sound = created.sound;
+      let ms = created.status?.durationMillis ?? null;
+      // Large files may not have durationMillis populated on the initial
+      // status — fall back to a fresh status read.
+      if (ms == null && typeof sound.getStatusAsync === 'function') {
+        const fresh = await sound.getStatusAsync();
+        ms = fresh?.durationMillis ?? null;
+      }
+      if (ms != null) _durationCacheMs.set(id, ms);
+      return ms;
+    } catch (e) {
+      console.warn('failed to read audio duration:', id, e);
+      return null;
+    } finally {
+      if (sound) {
+        try { await sound.unloadAsync(); } catch (_) {}
+      }
+      _inflight.delete(id);
+    }
+  })();
+
+  _inflight.set(id, promise);
+  return promise;
+}
+
+export function _resetPredefinedAudioDurationCache() {
+  _durationCacheMs.clear();
+  _inflight.clear();
 }

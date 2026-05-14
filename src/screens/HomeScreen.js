@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import StreakBadge from '../components/StreakBadge';
@@ -10,7 +10,13 @@ import TabBar from '../components/TabBar';
 import BellSelect from '../components/BellSelect';
 import PredefinedMeditationCard from '../components/PredefinedMeditationCard';
 import { getGreeting } from '../utils/greeting';
-import { PREDEFINED_MEDITATIONS, getPredefinedById } from '../utils/predefinedMeditations';
+import {
+  PREDEFINED_MEDITATIONS,
+  PREDEFINED_KIND,
+  getPredefinedById,
+  getPredefinedAudioDurationMs,
+  computeAudioStartOffsetSec,
+} from '../utils/predefinedMeditations';
 import useAppStore from '../store/useAppStore';
 
 const PREP_MIN = 5;
@@ -34,9 +40,35 @@ export default function HomeScreen({ navigation }) {
   const updateSessionDefaults = useAppStore((s) => s.updateSessionDefaults);
 
   const [activeTab, setActiveTab] = useState('manual');
-  const [selectedPredefId, setSelectedPredefId] = useState(
-    sessionDefaults?.lastPredefinedId ?? null
-  );
+  const [selectedPredefId, setSelectedPredefId] = useState(() => {
+    const persisted = sessionDefaults?.lastPredefinedId ?? null;
+    return getPredefinedById(persisted) ? persisted : null;
+  });
+  const [shortInstrAudioMs, setShortInstrAudioMs] = useState(null);
+  const beginningRef = useRef(false);
+
+  // Drop a stale persisted lastPredefinedId so it does not stick around in storage.
+  useEffect(() => {
+    const persisted = sessionDefaults?.lastPredefinedId ?? null;
+    if (persisted != null && !getPredefinedById(persisted)) {
+      updateSessionDefaults({ lastPredefinedId: null });
+    }
+    // Run once on mount; we only care about the value we hydrated from.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Lazily preload Short Instructions audio duration when user opens Predefined tab.
+  useEffect(() => {
+    if (activeTab !== 'predefined') return;
+    if (shortInstrAudioMs != null) return;
+    let cancelled = false;
+    getPredefinedAudioDurationMs('short-instructions').then((ms) => {
+      if (!cancelled && ms != null) setShortInstrAudioMs(ms);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, shortInstrAudioMs]);
 
   const prepSeconds = settings.prepSeconds;
   const meditationTime = settings.meditationTime;
@@ -56,19 +88,55 @@ export default function HomeScreen({ navigation }) {
 
   const isReady = activeTab === 'manual' || selectedPredefId != null;
 
-  const handleBegin = () => {
+  const cards = useMemo(
+    () =>
+      PREDEFINED_MEDITATIONS.map((m) => {
+        if (m.kind === PREDEFINED_KIND.SHORT_INSTRUCTIONS && m.meditationTime == null) {
+          const minutes = shortInstrAudioMs != null
+            ? Math.max(1, Math.ceil(shortInstrAudioMs / 60000))
+            : null;
+          return { ...m, meditationTime: minutes };
+        }
+        return m;
+      }),
+    [shortInstrAudioMs]
+  );
+
+  const handleBegin = async () => {
     if (!isReady) return;
+    if (beginningRef.current) return;
+
     if (activeTab === 'predefined') {
-      const m = getPredefinedById(selectedPredefId);
-      if (!m) return;
-      navigation.navigate('Session', {
-        prepSeconds: m.prepTime,
-        meditationTime: m.meditationTime,
-        startBell: m.startBell,
-        endBell: m.endBell,
-      });
+      beginningRef.current = true;
+      try {
+        const m = getPredefinedById(selectedPredefId);
+        if (!m) return;
+        const isShort = m.kind === PREDEFINED_KIND.SHORT_INSTRUCTIONS;
+        const audioMs = await getPredefinedAudioDurationMs(m.id);
+        const audioSec = audioMs ? Math.round(audioMs / 1000) : null;
+
+        const meditationMinutes = isShort
+          ? Math.max(1, Math.ceil((audioMs ?? 60000) / 60000))
+          : 60;
+
+        navigation.navigate('Session', {
+          prepSeconds: m.prepTime,
+          meditationTime: meditationMinutes,
+          predefined: {
+            id: m.id,
+            kind: m.kind,
+            audio: m.audio,
+            audioDurationSec: audioSec,
+            audioStartOffsetSec: computeAudioStartOffsetSec(m.kind, audioSec ?? 0),
+            endsWithAudio: isShort,
+          },
+        });
+      } finally {
+        beginningRef.current = false;
+      }
       return;
     }
+
     navigation.navigate('Session', {
       prepSeconds,
       meditationTime,
@@ -143,7 +211,7 @@ export default function HomeScreen({ navigation }) {
               contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 12, gap: 8 }}
               showsVerticalScrollIndicator={false}
             >
-              {PREDEFINED_MEDITATIONS.map((m) => (
+              {cards.map((m) => (
                 <PredefinedMeditationCard
                   key={m.id}
                   meditation={m}
