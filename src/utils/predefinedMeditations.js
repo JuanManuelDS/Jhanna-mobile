@@ -13,7 +13,7 @@ export const PREDEFINED_MEDITATIONS = [
     kind: PREDEFINED_KIND.SHORT_INSTRUCTIONS,
     prepTime: PREP_SECONDS,
     meditationTime: null,
-    audio: require('../../assets/audios/Short-Instr_English_Group Sitting_GroupSitting_Janani_2001.mp3'),
+    audio: require('../../assets/audios/Short-Instr_English_GroupSitting_GroupSitting_Janani_2001.mp3'),
   },
   {
     id: 'day-1',
