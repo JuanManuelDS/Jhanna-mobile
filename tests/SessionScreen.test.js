@@ -3,7 +3,6 @@ import { StyleSheet } from 'react-native';
 import SessionScreen from '../src/screens/SessionScreen';
 import SessionControls from '../src/components/SessionControls';
 
-// prepTime=0 so meditation starts immediately; no prep phase to wait through
 const mockRoute = { params: { prepTime: 0, meditationTime: 10 } };
 
 const mockNavigation = {
@@ -24,6 +23,27 @@ jest.mock('../src/store/useAppStore', () => ({
   default: jest.fn((selector) =>
     selector({ commitCompletedSession: mockCommitCompletedSession })
   ),
+}));
+
+// Mock the entire session service — we test it separately
+const mockSessionStart = jest.fn(() => Promise.resolve());
+const mockSessionPause = jest.fn(() => Promise.resolve());
+const mockSessionResume = jest.fn(() => Promise.resolve());
+const mockSessionStop = jest.fn(() => Promise.resolve());
+const mockSessionUpdatePhase = jest.fn();
+
+jest.mock('../src/services/sessionService', () => ({
+  start: (...args) => mockSessionStart(...args),
+  pause: (...args) => mockSessionPause(...args),
+  resume: (...args) => mockSessionResume(...args),
+  stop: (...args) => mockSessionStop(...args),
+  updatePhase: (...args) => mockSessionUpdatePhase(...args),
+}));
+
+// Mock useSessionClock — returns a controllable elapsed value
+let mockElapsedSec = 0;
+jest.mock('../src/hooks/useSessionClock', () => ({
+  useSessionClock: jest.fn(() => mockElapsedSec),
 }));
 
 const mockPlayStartBell = jest.fn();
@@ -49,6 +69,7 @@ jest.mock('../src/components/PhaseDots', () => 'PhaseDots');
 beforeEach(() => {
   jest.clearAllMocks();
   lastPredefinedAudioCall = null;
+  mockElapsedSec = 0;
   mockCommitCompletedSession.mockResolvedValue({
     duration: 1,
     streak: { current: 1, longest: 1 },
@@ -56,119 +77,110 @@ beforeEach(() => {
 });
 
 describe('SessionScreen', () => {
+  it('calls sessionService.start on mount with correct session params', async () => {
+    render(<SessionScreen route={mockRoute} navigation={mockNavigation} />);
+    await act(async () => {});
+    expect(mockSessionStart).toHaveBeenCalledTimes(1);
+    expect(mockSessionStart).toHaveBeenCalledWith(
+      expect.objectContaining({ medSec: 600, isPredefined: false })
+    );
+  });
+
   it('Pause button toggles label between Pause and Resume', () => {
-    jest.useFakeTimers();
     const { getByLabelText } = render(
       <SessionScreen route={mockRoute} navigation={mockNavigation} />
     );
-
     expect(getByLabelText('Pause')).toBeTruthy();
-
     fireEvent.press(getByLabelText('Pause'));
     expect(getByLabelText('Resume')).toBeTruthy();
-
     fireEvent.press(getByLabelText('Resume'));
     expect(getByLabelText('Pause')).toBeTruthy();
-
-    jest.useRealTimers();
   });
 
-  it('Stop while running opens confirmation modal and freezes the countdown', () => {
-    jest.useFakeTimers();
+  it('Pause calls sessionService.pause; Resume calls sessionService.resume', () => {
+    const { getByLabelText } = render(
+      <SessionScreen route={mockRoute} navigation={mockNavigation} />
+    );
+    fireEvent.press(getByLabelText('Pause'));
+    expect(mockSessionPause).toHaveBeenCalledTimes(1);
+    fireEvent.press(getByLabelText('Resume'));
+    expect(mockSessionResume).toHaveBeenCalledTimes(1);
+  });
+
+  it('Stop while running opens confirmation modal', () => {
     const { getByLabelText, getByText } = render(
       <SessionScreen route={mockRoute} navigation={mockNavigation} />
     );
-
-    act(() => { jest.advanceTimersByTime(2000); });
-
     fireEvent.press(getByLabelText('Stop'));
     expect(getByText('End Session?')).toBeTruthy();
-
-    // Advance time — modal is open so timer must be frozen
-    act(() => { jest.advanceTimersByTime(5000); });
-    // Modal still visible; if timer were running it would complete in 10 min, so here
-    // we just verify the modal is still showing (no phase completion fired)
-    expect(getByText('End Session?')).toBeTruthy();
-
-    jest.useRealTimers();
   });
 
-  it('Continue closes modal and resumes countdown from same position', () => {
-    jest.useFakeTimers();
-    const { getByLabelText, getByText, queryByText } = render(
-      <SessionScreen route={mockRoute} navigation={mockNavigation} />
-    );
-
-    fireEvent.press(getByLabelText('Stop'));
-    expect(getByText('End Session?')).toBeTruthy();
-
-    fireEvent.press(getByLabelText('Continue'));
-    expect(queryByText('End Session?')).toBeNull();
-
-    // Timer should be running again — Pause label visible (not Resume)
-    expect(getByLabelText('Pause')).toBeTruthy();
-
-    jest.useRealTimers();
-  });
-
-  it('Tapping the backdrop behaves identically to Continue', () => {
-    jest.useFakeTimers();
-    const { getByLabelText, getByText, queryByText, getByTestId } = render(
-      <SessionScreen route={mockRoute} navigation={mockNavigation} />
-    );
-
-    fireEvent.press(getByLabelText('Stop'));
-    expect(getByText('End Session?')).toBeTruthy();
-
-    fireEvent.press(getByTestId('modal-backdrop'));
-    expect(queryByText('End Session?')).toBeNull();
-    expect(getByLabelText('Pause')).toBeTruthy();
-
-    jest.useRealTimers();
-  });
-
-  it('Rapid double-tap End Session calls commitCompletedSession exactly once', async () => {
-    jest.useFakeTimers();
+  it('Stop calls sessionService.pause to freeze the timer', () => {
     const { getByLabelText } = render(
       <SessionScreen route={mockRoute} navigation={mockNavigation} />
     );
-
-    act(() => { jest.advanceTimersByTime(5000); });
-
     fireEvent.press(getByLabelText('Stop'));
-
-    fireEvent.press(getByLabelText('End Session'));
-    fireEvent.press(getByLabelText('End Session'));
-
-    await act(async () => { jest.runAllTimers(); });
-
-    expect(mockCommitCompletedSession).toHaveBeenCalledTimes(1);
-    expect(mockNavigation.replace).toHaveBeenCalledTimes(1);
-
-    jest.useRealTimers();
+    expect(mockSessionPause).toHaveBeenCalledTimes(1);
   });
 
-  it('Stopping while already paused leaves session paused after Continue', () => {
-    jest.useFakeTimers();
+  it('Continue closes modal and calls sessionService.resume', () => {
     const { getByLabelText, queryByText } = render(
       <SessionScreen route={mockRoute} navigation={mockNavigation} />
     );
-
-    // Pause first
-    fireEvent.press(getByLabelText('Pause'));
-    expect(getByLabelText('Resume')).toBeTruthy();
-
-    // Open stop modal
     fireEvent.press(getByLabelText('Stop'));
-
-    // Dismiss with Continue
     fireEvent.press(getByLabelText('Continue'));
+    expect(queryByText('End Session?')).toBeNull();
+    expect(mockSessionResume).toHaveBeenCalledTimes(1);
+  });
 
-    // Should still be paused — label is Resume, not Pause
+  it('Tapping the backdrop behaves identically to Continue', () => {
+    const { getByLabelText, queryByText, getByTestId } = render(
+      <SessionScreen route={mockRoute} navigation={mockNavigation} />
+    );
+    fireEvent.press(getByLabelText('Stop'));
+    fireEvent.press(getByTestId('modal-backdrop'));
+    expect(queryByText('End Session?')).toBeNull();
+    expect(mockSessionResume).toHaveBeenCalledTimes(1);
+  });
+
+  it('Rapid double-tap End Session calls commitCompletedSession exactly once', async () => {
+    // Give some elapsed time so we are past prep
+    mockElapsedSec = 5;
+    const { getByLabelText } = render(
+      <SessionScreen route={mockRoute} navigation={mockNavigation} />
+    );
+    fireEvent.press(getByLabelText('Stop'));
+    fireEvent.press(getByLabelText('End Session'));
+    fireEvent.press(getByLabelText('End Session'));
+
+    await act(async () => {});
+
+    expect(mockCommitCompletedSession).toHaveBeenCalledTimes(1);
+    expect(mockNavigation.replace).toHaveBeenCalledTimes(1);
+  });
+
+  it('End Session calls sessionService.stop', async () => {
+    mockElapsedSec = 5;
+    const { getByLabelText } = render(
+      <SessionScreen route={mockRoute} navigation={mockNavigation} />
+    );
+    fireEvent.press(getByLabelText('Stop'));
+    fireEvent.press(getByLabelText('End Session'));
+    await act(async () => {});
+    expect(mockSessionStop).toHaveBeenCalled();
+  });
+
+  it('Stopping while already paused leaves session paused after Continue', () => {
+    const { getByLabelText, queryByText } = render(
+      <SessionScreen route={mockRoute} navigation={mockNavigation} />
+    );
+    fireEvent.press(getByLabelText('Pause'));
+    fireEvent.press(getByLabelText('Stop'));
+    fireEvent.press(getByLabelText('Continue'));
     expect(getByLabelText('Resume')).toBeTruthy();
     expect(queryByText('End Session?')).toBeNull();
-
-    jest.useRealTimers();
+    // Continue should NOT call resume because session was already paused before stop
+    expect(mockSessionResume).not.toHaveBeenCalled();
   });
 });
 
@@ -189,8 +201,15 @@ describe('SessionScreen — predefined sessions', () => {
     },
   });
 
-  it('does not invoke start bell when crossing prep -> meditation in a predefined session', async () => {
-    jest.useFakeTimers();
+  it('does NOT start bell triggers for predefined sessions', async () => {
+    render(<SessionScreen route={predefinedRoute()} navigation={mockNavigation} />);
+    await act(async () => {});
+    expect(mockSessionStart).toHaveBeenCalledWith(
+      expect.objectContaining({ isPredefined: true })
+    );
+  });
+
+  it('does not invoke start or end bell hooks during prep → meditation transition', async () => {
     const route = {
       params: {
         prepSeconds: 1,
@@ -205,31 +224,30 @@ describe('SessionScreen — predefined sessions', () => {
         },
       },
     };
-    render(<SessionScreen route={route} navigation={mockNavigation} />);
+    const { rerender } = render(<SessionScreen route={route} navigation={mockNavigation} />);
 
-    // Tick past the 1-second prep so the prep -> meditation boundary fires.
-    await act(async () => {
-      jest.advanceTimersByTime(2000);
-    });
+    // Simulate crossing the prep→meditation boundary
+    mockElapsedSec = 2;
+    const { useSessionClock } = require('../src/hooks/useSessionClock');
+    useSessionClock.mockReturnValue(2);
+
+    rerender(<SessionScreen route={route} navigation={mockNavigation} />);
+    await act(async () => {});
 
     expect(mockPlayStartBell).not.toHaveBeenCalled();
     expect(mockPlayEndBell).not.toHaveBeenCalled();
-    jest.useRealTimers();
   });
 
   it('passes predefined props to usePredefinedAudio with onAudioEnd only when endsWithAudio', () => {
-    jest.useFakeTimers();
     render(<SessionScreen route={predefinedRoute()} navigation={mockNavigation} />);
     expect(lastPredefinedAudioCall).toBeTruthy();
     expect(lastPredefinedAudioCall.predefined).toEqual(
       expect.objectContaining({ id: 'day-1', kind: 'day' })
     );
     expect(lastPredefinedAudioCall.onAudioEnd).toBeUndefined();
-    jest.useRealTimers();
   });
 
   it('Short Instructions: onAudioEnd commits session and navigates to Complete', async () => {
-    jest.useFakeTimers();
     render(
       <SessionScreen
         route={predefinedRoute({
@@ -247,7 +265,6 @@ describe('SessionScreen — predefined sessions', () => {
 
     await act(async () => {
       lastPredefinedAudioCall.onAudioEnd();
-      jest.runAllTimers();
     });
 
     await waitFor(() => {
@@ -257,7 +274,6 @@ describe('SessionScreen — predefined sessions', () => {
         expect.objectContaining({ duration: 1 })
       );
     });
-    jest.useRealTimers();
   });
 });
 
@@ -282,8 +298,6 @@ describe('SessionControls styling', () => {
     const pauseStyle = resolveStyle(pauseBtn.props.style);
     const stopStyle = resolveStyle(stopBtn.props.style);
 
-    // Background color lives on the inner View via NativeWind className; outer Pressable
-    // carries the shadow color and border radius for proper shadow rendering on iOS.
     expect(pauseStyle.shadowColor).toBe('#E8936A');
     expect(pauseStyle.borderRadius).toBe(28);
     expect(stopStyle.shadowColor).toBe('#D4796A');

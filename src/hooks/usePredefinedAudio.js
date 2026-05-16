@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { AppState } from 'react-native';
 import { Audio } from 'expo-av';
 
 export function usePredefinedAudio({
@@ -91,21 +90,6 @@ export function usePredefinedAudio({
     }
   }, [isPaused]);
 
-  useEffect(() => {
-    if (!predefined) return undefined;
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'background' || state === 'inactive') {
-        const sound = soundRef.current;
-        if (!sound) return;
-        (async () => {
-          try { await sound.stopAsync(); } catch (_) {}
-          try { await sound.unloadAsync(); } catch (_) {}
-        })();
-        soundRef.current = null;
-      }
-    });
-    return () => {
-      if (sub && typeof sub.remove === 'function') sub.remove();
-    };
-  }, [predefined]);
+  // Background-stop intentionally removed: staysActiveInBackground=true lets
+  // guided audio continue playing when the screen turns off.
 }

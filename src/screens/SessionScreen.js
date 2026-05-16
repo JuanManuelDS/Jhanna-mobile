@@ -4,7 +4,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { phaseAt } from '../utils/timer';
 import { useBells } from '../hooks/useBells';
 import { usePredefinedAudio } from '../hooks/usePredefinedAudio';
+import { useSessionClock } from '../hooks/useSessionClock';
 import { NONE_BELL } from '../utils/bells';
+import * as sessionService from '../services/sessionService';
 import CircularTimer from '../components/CircularTimer';
 import PhaseLabel from '../components/PhaseLabel';
 import PhaseDots from '../components/PhaseDots';
@@ -29,18 +31,20 @@ export default function SessionScreen({ route, navigation }) {
 
   const commitCompletedSession = useAppStore((s) => s.commitCompletedSession);
 
-  const [elapsedSec, setElapsedSec] = useState(0);
+  // Timestamp-anchored elapsed seconds — correct even after screen-off/background
+  const elapsedSec = useSessionClock();
+
   const [isPaused, setIsPaused] = useState(false);
   const [stopModalVisible, setStopModalVisible] = useState(false);
   const [ringing, setRinging] = useState(false);
   const [phaseKey, setPhaseKey] = useState(0);
 
-  const intervalRef = useRef(null);
   const completedRef = useRef(false);
   const endingRef = useRef(false);
+  const sessionStartedRef = useRef(false);
   const wasPausedBeforeStopRef = useRef(false);
 
-  // For predefined sessions, pass NONE_BELL so useBells short-circuits playback/loading.
+  // For predefined sessions pass NONE_BELL so useBells short-circuits loading
   const { playStartBell, playEndBell } = useBells(
     isPredefined
       ? { startBell: NONE_BELL, endBell: NONE_BELL }
@@ -48,7 +52,6 @@ export default function SessionScreen({ route, navigation }) {
   );
 
   const { phase, remainingSeconds } = phaseAt(prepSec, medSec, elapsedSec);
-
   const phaseDurationSec = phase === 'preparation' ? prepSec : medSec;
 
   const ringBell = useCallback(() => {
@@ -56,21 +59,62 @@ export default function SessionScreen({ route, navigation }) {
     setTimeout(() => setRinging(false), 750);
   }, []);
 
+  // ── Session lifecycle ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (isPaused || completedRef.current) {
-      clearInterval(intervalRef.current);
+    if (sessionStartedRef.current) return;
+    sessionStartedRef.current = true;
+
+    sessionService
+      .start({ prepSec, medSec, bellSound: endBell, isPredefined })
+      .catch((e) => console.warn('sessionService.start failed:', e));
+
+    return () => {
+      // Safety net: stop if unmounted without going through stop/complete paths
+      if (!completedRef.current && !endingRef.current) {
+        sessionService.stop().catch(() => {});
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Phase transitions ──────────────────────────────────────────────────────
+  const prevPhaseRef = useRef(phase);
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = phase;
+
+    if (phase === 'complete' && !completedRef.current) {
+      completedRef.current = true;
+      if (!isPredefined) {
+        ringBell();
+        playEndBell();
+      }
+      sessionService.stop().catch(() => {});
+      commitCompletedSession({ durationMinutes: meditationTime }).then((result) => {
+        navigation.replace('Complete', {
+          duration: result.duration,
+          streakCount: result.streak.current,
+          date: new Date().toISOString(),
+        });
+      });
       return;
     }
-    intervalRef.current = setInterval(() => {
-      setElapsedSec((e) => e + 1);
-    }, 1000);
-    return () => clearInterval(intervalRef.current);
-  }, [isPaused]);
 
+    if (prev === 'preparation' && phase === 'meditation') {
+      if (!isPredefined) {
+        ringBell();
+        playStartBell();
+      }
+      sessionService.updatePhase();
+      setPhaseKey((k) => k + 1);
+    }
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Predefined audio ───────────────────────────────────────────────────────
   const handleAudioEnd = useCallback(() => {
     if (completedRef.current) return;
     completedRef.current = true;
-    clearInterval(intervalRef.current);
+    sessionService.stop().catch(() => {});
     commitCompletedSession({ durationMinutes: meditationTime }).then((result) => {
       navigation.replace('Complete', {
         duration: result.duration,
@@ -91,46 +135,19 @@ export default function SessionScreen({ route, navigation }) {
     onAudioEnd: predefined?.endsWithAudio ? handleAudioEnd : undefined,
   });
 
-  const prevPhaseRef = useRef(phase);
-  useEffect(() => {
-    const prev = prevPhaseRef.current;
-    prevPhaseRef.current = phase;
-
-    if (phase === 'complete' && !completedRef.current) {
-      completedRef.current = true;
-      clearInterval(intervalRef.current);
-      if (!isPredefined) {
-        ringBell();
-        playEndBell();
-      }
-
-      commitCompletedSession({ durationMinutes: meditationTime }).then((result) => {
-        navigation.replace('Complete', {
-          duration: result.duration,
-          streakCount: result.streak.current,
-          date: new Date().toISOString(),
-        });
-      });
-      return;
-    }
-
-    if (prev === 'preparation' && phase === 'meditation') {
-      if (!isPredefined) {
-        ringBell();
-        playStartBell();
-      }
-      setPhaseKey((k) => k + 1);
-    }
-  }, [phase]);
-
+  // ── Back-button handler ────────────────────────────────────────────────────
   useFocusEffect(
     useCallback(() => {
       const onBack = () => {
         if (stopModalVisible) {
           setStopModalVisible(false);
-          if (!wasPausedBeforeStopRef.current) setIsPaused(false);
+          if (!wasPausedBeforeStopRef.current) {
+            sessionService.resume().catch(() => {});
+            setIsPaused(false);
+          }
         } else {
           wasPausedBeforeStopRef.current = isPaused;
+          if (!isPaused) sessionService.pause().catch(() => {});
           setIsPaused(true);
           setStopModalVisible(true);
         }
@@ -141,12 +158,20 @@ export default function SessionScreen({ route, navigation }) {
     }, [stopModalVisible, isPaused])
   );
 
+  // ── Control handlers ───────────────────────────────────────────────────────
   const handlePauseResume = () => {
-    setIsPaused((p) => !p);
+    const next = !isPaused;
+    setIsPaused(next);
+    if (next) {
+      sessionService.pause().catch(() => {});
+    } else {
+      sessionService.resume().catch(() => {});
+    }
   };
 
   const handleStop = () => {
     wasPausedBeforeStopRef.current = isPaused;
+    if (!isPaused) sessionService.pause().catch(() => {});
     setIsPaused(true);
     setStopModalVisible(true);
   };
@@ -154,6 +179,7 @@ export default function SessionScreen({ route, navigation }) {
   const handleContinue = () => {
     setStopModalVisible(false);
     if (!wasPausedBeforeStopRef.current) {
+      sessionService.resume().catch(() => {});
       setIsPaused(false);
     }
   };
@@ -162,9 +188,9 @@ export default function SessionScreen({ route, navigation }) {
     if (endingRef.current) return;
     endingRef.current = true;
 
-    clearInterval(intervalRef.current);
-
     const meditatedSec = Math.max(0, elapsedSec - prepSec);
+    sessionService.stop().catch(() => {});
+
     if (meditatedSec > 0) {
       const durationMinutes = Math.max(1, Math.ceil(meditatedSec / 60));
       commitCompletedSession({ durationMinutes }).then((result) => {
@@ -177,16 +203,10 @@ export default function SessionScreen({ route, navigation }) {
       return;
     }
 
-    // Stopped during prep with no meditation time — nothing to save
+    // Stopped during prep — nothing to save
     setStopModalVisible(false);
     navigation.popToTop();
   };
-
-  useEffect(() => {
-    return () => {
-      clearInterval(intervalRef.current);
-    };
-  }, []);
 
   if (medSec === 0) {
     navigation.popToTop();
