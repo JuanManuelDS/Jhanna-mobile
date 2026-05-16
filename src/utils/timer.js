@@ -1,22 +1,12 @@
 export function phaseAt(prepSec, medSec, elapsedSec) {
-  if (prepSec === 0) {
-    const remaining = Math.max(0, medSec - elapsedSec);
-    return {
-      phase: remaining === 0 ? 'complete' : 'meditation',
-      remainingSeconds: remaining,
-    };
+  if (prepSec > 0 && elapsedSec < prepSec) {
+    return { phase: 'preparation', remainingSeconds: prepSec - elapsedSec, overtimeSeconds: 0 };
   }
 
-  if (elapsedSec < prepSec) {
-    return { phase: 'preparation', remainingSeconds: prepSec - elapsedSec };
-  }
-
-  const medElapsed = elapsedSec - prepSec;
+  const medElapsed = elapsedSec - (prepSec > 0 ? prepSec : 0);
   const remaining = Math.max(0, medSec - medElapsed);
-  return {
-    phase: remaining === 0 ? 'complete' : 'meditation',
-    remainingSeconds: remaining,
-  };
+  const overtime = Math.max(0, medElapsed - medSec);
+  return { phase: 'meditation', remainingSeconds: remaining, overtimeSeconds: overtime };
 }
 
 export function formatMSS(totalSeconds) {

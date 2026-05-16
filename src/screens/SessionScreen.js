@@ -39,7 +39,7 @@ export default function SessionScreen({ route, navigation }) {
   const [ringing, setRinging] = useState(false);
   const [phaseKey, setPhaseKey] = useState(0);
 
-  const completedRef = useRef(false);
+  const endBellPlayedRef = useRef(false);
   const endingRef = useRef(false);
   const sessionStartedRef = useRef(false);
   const wasPausedBeforeStopRef = useRef(false);
@@ -51,7 +51,7 @@ export default function SessionScreen({ route, navigation }) {
       : { startBell, endBell }
   );
 
-  const { phase, remainingSeconds } = phaseAt(prepSec, medSec, elapsedSec);
+  const { phase, remainingSeconds, overtimeSeconds } = phaseAt(prepSec, medSec, elapsedSec);
   const phaseDurationSec = phase === 'preparation' ? prepSec : medSec;
 
   const ringBell = useCallback(() => {
@@ -69,8 +69,8 @@ export default function SessionScreen({ route, navigation }) {
       .catch((e) => console.warn('sessionService.start failed:', e));
 
     return () => {
-      // Safety net: stop if unmounted without going through stop/complete paths
-      if (!completedRef.current && !endingRef.current) {
+      // Safety net: stop if unmounted without going through the user-stop path
+      if (!endingRef.current) {
         sessionService.stop().catch(() => {});
       }
     };
@@ -83,23 +83,6 @@ export default function SessionScreen({ route, navigation }) {
     const prev = prevPhaseRef.current;
     prevPhaseRef.current = phase;
 
-    if (phase === 'complete' && !completedRef.current) {
-      completedRef.current = true;
-      if (!isPredefined) {
-        ringBell();
-        playEndBell();
-      }
-      sessionService.stop().catch(() => {});
-      commitCompletedSession({ durationMinutes: meditationTime }).then((result) => {
-        navigation.replace('Complete', {
-          duration: result.duration,
-          streakCount: result.streak.current,
-          date: new Date().toISOString(),
-        });
-      });
-      return;
-    }
-
     if (prev === 'preparation' && phase === 'meditation') {
       if (!isPredefined) {
         ringBell();
@@ -110,19 +93,17 @@ export default function SessionScreen({ route, navigation }) {
     }
   }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Predefined audio ───────────────────────────────────────────────────────
-  const handleAudioEnd = useCallback(() => {
-    if (completedRef.current) return;
-    completedRef.current = true;
-    sessionService.stop().catch(() => {});
-    commitCompletedSession({ durationMinutes: meditationTime }).then((result) => {
-      navigation.replace('Complete', {
-        duration: result.duration,
-        streakCount: result.streak.current,
-        date: new Date().toISOString(),
-      });
-    });
-  }, [commitCompletedSession, meditationTime, navigation]);
+  // ── End-of-meditation bell (once at the original end mark) ────────────────
+  useEffect(() => {
+    if (endBellPlayedRef.current) return;
+    if (phase !== 'meditation') return;
+    if (elapsedSec < prepSec + medSec) return;
+    endBellPlayedRef.current = true;
+    if (!isPredefined) {
+      ringBell();
+      playEndBell();
+    }
+  }, [phase, elapsedSec, prepSec, medSec, isPredefined, ringBell, playEndBell]);
 
   const medElapsedSec = Math.max(0, elapsedSec - prepSec);
   const inMeditationPhase = phase === 'meditation';
@@ -132,7 +113,6 @@ export default function SessionScreen({ route, navigation }) {
     isPaused,
     inMeditationPhase,
     medElapsedSec,
-    onAudioEnd: predefined?.endsWithAudio ? handleAudioEnd : undefined,
   });
 
   // ── Back-button handler ────────────────────────────────────────────────────
@@ -215,18 +195,19 @@ export default function SessionScreen({ route, navigation }) {
 
   return (
     <View style={styles.screen}>
-      <PhaseLabel phase={phase === 'complete' ? 'meditation' : phase} ringing={ringing} phaseKey={phaseKey} />
+      <PhaseLabel phase={phase} ringing={ringing} phaseKey={phaseKey} />
 
       <View style={styles.timerWrapper}>
         <CircularTimer
           phaseDurationSec={phaseDurationSec}
           remainingSec={remainingSeconds}
+          overtimeSec={overtimeSeconds}
           isPaused={isPaused}
           phaseKey={phaseKey}
         />
       </View>
 
-      <PhaseDots activePhase={phase === 'complete' ? 'meditation' : phase} />
+      <PhaseDots activePhase={phase} />
 
       <SessionControls
         isRunning={!isPaused}

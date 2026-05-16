@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import StreakBadge from '../components/StreakBadge';
 import StatsButton from '../components/StatsButton';
@@ -115,8 +115,18 @@ export default function HomeScreen({ navigation }) {
         const audioMs = await getPredefinedAudioDurationMs(m.id);
         const audioSec = audioMs ? Math.round(audioMs / 1000) : null;
 
+        // For Short Instructions the meditation length IS the audio length.
+        // If we can't read it, don't silently start a 1-minute session.
+        if (isShort && !audioMs) {
+          Alert.alert(
+            'Audio unavailable',
+            'Could not read the meditation audio duration. Please try again.'
+          );
+          return;
+        }
+
         const meditationMinutes = isShort
-          ? Math.max(1, Math.ceil((audioMs ?? 60000) / 60000))
+          ? Math.max(1, Math.ceil(audioMs / 60000))
           : 60;
 
         navigation.navigate('Session', {
@@ -147,6 +157,10 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <SafeAreaView className="flex-1 bg-cream" edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <View className="flex-row items-center justify-between px-5 pb-2 pt-2">
         <StreakBadge count={streak.current} />
         <StatsButton onPress={() => navigation.navigate('Stats')} />
@@ -227,6 +241,7 @@ export default function HomeScreen({ navigation }) {
       <View className="px-5 pb-7 pt-4">
         <BeginButton onPress={handleBegin} disabled={!isReady} />
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

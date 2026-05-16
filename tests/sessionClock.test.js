@@ -130,9 +130,11 @@ describe('phase computation via phaseAt (rehydration)', () => {
     expect(phase).toBe('meditation');
   });
 
-  it('shows complete when elapsed >= prepSec + medSec', () => {
+  it('reports overtime when elapsed >= prepSec + medSec', () => {
     const elapsed = computeElapsedSec({ startedAt: T0, pausedAccumMs: 0, pauseStartedAt: null, now: T0 + 700_000 });
-    const { phase } = phaseAt(60, 600, elapsed);
-    expect(phase).toBe('complete');
+    const { phase, remainingSeconds, overtimeSeconds } = phaseAt(60, 600, elapsed);
+    expect(phase).toBe('meditation');
+    expect(remainingSeconds).toBe(0);
+    expect(overtimeSeconds).toBe(40);
   });
 });

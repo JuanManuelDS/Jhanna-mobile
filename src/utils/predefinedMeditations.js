@@ -13,7 +13,7 @@ export const PREDEFINED_MEDITATIONS = [
     kind: PREDEFINED_KIND.SHORT_INSTRUCTIONS,
     prepTime: PREP_SECONDS,
     meditationTime: null,
-    audio: require('../../assets/audios/Short-Instr_English_Group Sitting_GroupSitting_Janani_2001.mp3'),
+    audio: require('../../assets/audios/Short-Instr_English_GroupSitting_GroupSitting_Janani_2001.mp3'),
   },
   {
     id: 'day-1',
@@ -132,6 +132,36 @@ export async function getPredefinedAudioDurationMs(id) {
       if (ms == null && typeof sound.getStatusAsync === 'function') {
         const fresh = await sound.getStatusAsync();
         ms = fresh?.durationMillis ?? null;
+      }
+      // expo-av sometimes reports isLoaded=true with durationMillis=null for
+      // longer MP3s (notably on iOS) until the decoder has parsed the header.
+      // Wait for a status update that carries a real duration, polling as a
+      // nudge, with a timeout safety net.
+      if (ms == null && typeof sound.setOnPlaybackStatusUpdate === 'function') {
+        ms = await new Promise((resolve) => {
+          let pollId;
+          let timeoutId;
+          let settled = false;
+          const finish = (value) => {
+            if (settled) return;
+            settled = true;
+            try { sound.setOnPlaybackStatusUpdate(null); } catch (_) {}
+            if (pollId) clearInterval(pollId);
+            if (timeoutId) clearTimeout(timeoutId);
+            resolve(value);
+          };
+          sound.setOnPlaybackStatusUpdate((status) => {
+            if (status?.durationMillis != null) finish(status.durationMillis);
+          });
+          if (typeof sound.getStatusAsync === 'function') {
+            pollId = setInterval(() => {
+              sound.getStatusAsync().then((s) => {
+                if (s?.durationMillis != null) finish(s.durationMillis);
+              }).catch(() => {});
+            }, 200);
+          }
+          timeoutId = setTimeout(() => finish(null), 5000);
+        });
       }
       if (ms != null) _durationCacheMs.set(id, ms);
       return ms;
