@@ -60,6 +60,39 @@ jest.mock('expo-blur', () => {
   };
 });
 
+// @notifee/react-native mock
+jest.mock('@notifee/react-native', () => {
+  const EventType = { DELIVERED: 0, PRESS: 1, ACTION_PRESS: 2, DISMISSED: 3 };
+  const TriggerType = { TIMESTAMP: 0, INTERVAL: 1 };
+  const AndroidImportance = { NONE: 0, MIN: 1, LOW: 2, DEFAULT: 3, HIGH: 4 };
+  const AndroidVisibility = { PRIVATE: 0, PUBLIC: 1, SECRET: -1 };
+
+  const notifee = {
+    createChannel: jest.fn(() => Promise.resolve('channel-id')),
+    displayNotification: jest.fn(() => Promise.resolve()),
+    createTriggerNotification: jest.fn(() => Promise.resolve()),
+    cancelNotification: jest.fn(() => Promise.resolve()),
+    cancelTriggerNotification: jest.fn(() => Promise.resolve()),
+    stopForegroundService: jest.fn(() => Promise.resolve()),
+    registerForegroundService: jest.fn(),
+    onForegroundEvent: jest.fn(() => jest.fn()),
+    onBackgroundEvent: jest.fn(),
+    requestPermission: jest.fn(() => Promise.resolve({ authorizationStatus: 1 })),
+    getPowerManagerInfo: jest.fn(() => Promise.resolve({ activity: null })),
+    openPowerManagerSettings: jest.fn(() => Promise.resolve()),
+  };
+
+  return {
+    __esModule: true,
+    default: notifee,
+    EventType,
+    TriggerType,
+    AndroidImportance,
+    AndroidVisibility,
+    InterruptionModeAndroid: { DoNotMix: 1, DuckOthers: 2 },
+  };
+});
+
 // expo-av mock
 jest.mock('expo-av', () => ({
   Audio: {

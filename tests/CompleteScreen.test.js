@@ -83,7 +83,7 @@ describe('CompleteScreen', () => {
       <CompleteScreen navigation={nav} route={makeRoute(validParams)} />
     );
     fireEvent.press(getByLabelText('View Statistics'));
-    expect(nav.navigate).toHaveBeenCalledWith('Statistics');
+    expect(nav.navigate).toHaveBeenCalledWith('Stats');
   });
 
   it('falls back gracefully when date is omitted', () => {

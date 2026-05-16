@@ -16,6 +16,48 @@ const useAppStore = create((set, get) => ({
   sessionDefaults: { ...DEFAULT_SESSION_DEFAULTS },
   hydrated: false,
 
+  // Transient active-session state (not persisted). Shape when non-null:
+  // { id, startedAt, prepSec, medSec, isPredefined, bellSound,
+  //   pausedAccumMs, pauseStartedAt }
+  activeSession: null,
+
+  beginSession: ({ id, startedAt, prepSec, medSec, isPredefined, bellSound }) =>
+    set({
+      activeSession: {
+        id,
+        startedAt,
+        prepSec,
+        medSec,
+        isPredefined,
+        bellSound,
+        pausedAccumMs: 0,
+        pauseStartedAt: null,
+      },
+    }),
+
+  pauseSession: () =>
+    set((state) => ({
+      activeSession: state.activeSession
+        ? { ...state.activeSession, pauseStartedAt: Date.now() }
+        : null,
+    })),
+
+  resumeSession: () =>
+    set((state) => {
+      if (!state.activeSession) return {};
+      const { pauseStartedAt, pausedAccumMs } = state.activeSession;
+      const extra = pauseStartedAt != null ? Date.now() - pauseStartedAt : 0;
+      return {
+        activeSession: {
+          ...state.activeSession,
+          pausedAccumMs: pausedAccumMs + extra,
+          pauseStartedAt: null,
+        },
+      };
+    }),
+
+  clearSession: () => set({ activeSession: null }),
+
   hydrate: async () => {
     const data = await loadStorageData();
     set({ ...data, hydrated: true });
