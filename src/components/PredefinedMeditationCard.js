@@ -10,6 +10,9 @@ function formatPrep(seconds) {
 }
 
 export default function PredefinedMeditationCard({ meditation, selected, onPress }) {
+  const minutesLabel =
+    typeof meditation.meditationTime === 'number' ? `${meditation.meditationTime} min` : '— min';
+
   return (
     <Pressable
       onPress={() => onPress(meditation)}
@@ -28,18 +31,13 @@ export default function PredefinedMeditationCard({ meditation, selected, onPress
         </Text>
         <View className="flex-row items-center gap-1.5">
           <Text className="font-sans text-[11px] text-sand">
-            {meditation.meditationTime} min
+            {minutesLabel}
           </Text>
           <View className="h-0.5 w-0.5 rounded-full bg-sand/50" />
           <Text className="font-sans text-[11px] text-sand">
             {formatPrep(meditation.prepTime)}
           </Text>
         </View>
-        {meditation.description ? (
-          <Text className="mt-0.5 font-sans text-[11px] text-brown/50">
-            {meditation.description}
-          </Text>
-        ) : null}
       </View>
       <View
         className="h-8 w-8 items-center justify-center rounded-full border-[1.5px]"

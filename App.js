@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
+import { Audio } from 'expo-av';
 import {
   DMSans_400Regular,
   DMSans_500Medium,
@@ -29,6 +30,13 @@ export default function App() {
 
   useEffect(() => {
     hydrate();
+    // Allow audio (bells + guided meditations) to play with the iOS silent
+    // switch on, and not duck other apps unnecessarily on Android.
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: true,
+    }).catch((e) => console.warn('setAudioModeAsync failed:', e));
   }, []);
 
   if (!fontsLoaded || !hydrated) return null;

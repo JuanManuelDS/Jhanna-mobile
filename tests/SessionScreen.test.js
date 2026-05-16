@@ -26,8 +26,20 @@ jest.mock('../src/store/useAppStore', () => ({
   ),
 }));
 
+const mockPlayStartBell = jest.fn();
+const mockPlayEndBell = jest.fn();
 jest.mock('../src/hooks/useBells', () => ({
-  useBells: () => ({ playStartBell: jest.fn(), playEndBell: jest.fn() }),
+  useBells: jest.fn(() => ({
+    playStartBell: mockPlayStartBell,
+    playEndBell: mockPlayEndBell,
+  })),
+}));
+
+let lastPredefinedAudioCall = null;
+jest.mock('../src/hooks/usePredefinedAudio', () => ({
+  usePredefinedAudio: jest.fn((args) => {
+    lastPredefinedAudioCall = args;
+  }),
 }));
 
 jest.mock('../src/components/CircularTimer', () => 'CircularTimer');
@@ -36,6 +48,7 @@ jest.mock('../src/components/PhaseDots', () => 'PhaseDots');
 
 beforeEach(() => {
   jest.clearAllMocks();
+  lastPredefinedAudioCall = null;
   mockCommitCompletedSession.mockResolvedValue({
     duration: 1,
     streak: { current: 1, longest: 1 },
@@ -155,6 +168,95 @@ describe('SessionScreen', () => {
     expect(getByLabelText('Resume')).toBeTruthy();
     expect(queryByText('End Session?')).toBeNull();
 
+    jest.useRealTimers();
+  });
+});
+
+describe('SessionScreen — predefined sessions', () => {
+  const predefinedRoute = (overrides = {}) => ({
+    params: {
+      prepSeconds: 0,
+      meditationTime: 60,
+      predefined: {
+        id: 'day-1',
+        kind: 'day',
+        audio: {},
+        audioDurationSec: 33 * 60,
+        audioStartOffsetSec: 27 * 60,
+        endsWithAudio: false,
+        ...overrides,
+      },
+    },
+  });
+
+  it('does not invoke start bell when crossing prep -> meditation in a predefined session', async () => {
+    jest.useFakeTimers();
+    const route = {
+      params: {
+        prepSeconds: 1,
+        meditationTime: 60,
+        predefined: {
+          id: 'day-1',
+          kind: 'day',
+          audio: {},
+          audioDurationSec: 30 * 60,
+          audioStartOffsetSec: 30 * 60,
+          endsWithAudio: false,
+        },
+      },
+    };
+    render(<SessionScreen route={route} navigation={mockNavigation} />);
+
+    // Tick past the 1-second prep so the prep -> meditation boundary fires.
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    expect(mockPlayStartBell).not.toHaveBeenCalled();
+    expect(mockPlayEndBell).not.toHaveBeenCalled();
+    jest.useRealTimers();
+  });
+
+  it('passes predefined props to usePredefinedAudio with onAudioEnd only when endsWithAudio', () => {
+    jest.useFakeTimers();
+    render(<SessionScreen route={predefinedRoute()} navigation={mockNavigation} />);
+    expect(lastPredefinedAudioCall).toBeTruthy();
+    expect(lastPredefinedAudioCall.predefined).toEqual(
+      expect.objectContaining({ id: 'day-1', kind: 'day' })
+    );
+    expect(lastPredefinedAudioCall.onAudioEnd).toBeUndefined();
+    jest.useRealTimers();
+  });
+
+  it('Short Instructions: onAudioEnd commits session and navigates to Complete', async () => {
+    jest.useFakeTimers();
+    render(
+      <SessionScreen
+        route={predefinedRoute({
+          id: 'short-instructions',
+          kind: 'short',
+          audioDurationSec: 7 * 60,
+          audioStartOffsetSec: 0,
+          endsWithAudio: true,
+        })}
+        navigation={mockNavigation}
+      />
+    );
+
+    expect(typeof lastPredefinedAudioCall.onAudioEnd).toBe('function');
+
+    await act(async () => {
+      lastPredefinedAudioCall.onAudioEnd();
+      jest.runAllTimers();
+    });
+
+    await waitFor(() => {
+      expect(mockCommitCompletedSession).toHaveBeenCalledTimes(1);
+      expect(mockNavigation.replace).toHaveBeenCalledWith(
+        'Complete',
+        expect.objectContaining({ duration: 1 })
+      );
+    });
     jest.useRealTimers();
   });
 });

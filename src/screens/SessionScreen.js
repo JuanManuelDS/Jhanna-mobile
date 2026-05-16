@@ -3,6 +3,8 @@ import { View, StyleSheet, BackHandler } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { phaseAt } from '../utils/timer';
 import { useBells } from '../hooks/useBells';
+import { usePredefinedAudio } from '../hooks/usePredefinedAudio';
+import { NONE_BELL } from '../utils/bells';
 import CircularTimer from '../components/CircularTimer';
 import PhaseLabel from '../components/PhaseLabel';
 import PhaseDots from '../components/PhaseDots';
@@ -17,7 +19,9 @@ export default function SessionScreen({ route, navigation }) {
     meditationTime = 10,
     startBell,
     endBell,
+    predefined,
   } = route.params ?? {};
+  const isPredefined = !!predefined;
   const prepSec = typeof prepSeconds === 'number'
     ? prepSeconds
     : (prepTime ?? 1) * 60;
@@ -36,7 +40,12 @@ export default function SessionScreen({ route, navigation }) {
   const endingRef = useRef(false);
   const wasPausedBeforeStopRef = useRef(false);
 
-  const { playStartBell, playEndBell } = useBells({ startBell, endBell });
+  // For predefined sessions, pass NONE_BELL so useBells short-circuits playback/loading.
+  const { playStartBell, playEndBell } = useBells(
+    isPredefined
+      ? { startBell: NONE_BELL, endBell: NONE_BELL }
+      : { startBell, endBell }
+  );
 
   const { phase, remainingSeconds } = phaseAt(prepSec, medSec, elapsedSec);
 
@@ -58,6 +67,30 @@ export default function SessionScreen({ route, navigation }) {
     return () => clearInterval(intervalRef.current);
   }, [isPaused]);
 
+  const handleAudioEnd = useCallback(() => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    clearInterval(intervalRef.current);
+    commitCompletedSession({ durationMinutes: meditationTime }).then((result) => {
+      navigation.replace('Complete', {
+        duration: result.duration,
+        streakCount: result.streak.current,
+        date: new Date().toISOString(),
+      });
+    });
+  }, [commitCompletedSession, meditationTime, navigation]);
+
+  const medElapsedSec = Math.max(0, elapsedSec - prepSec);
+  const inMeditationPhase = phase === 'meditation';
+
+  usePredefinedAudio({
+    predefined: isPredefined ? predefined : null,
+    isPaused,
+    inMeditationPhase,
+    medElapsedSec,
+    onAudioEnd: predefined?.endsWithAudio ? handleAudioEnd : undefined,
+  });
+
   const prevPhaseRef = useRef(phase);
   useEffect(() => {
     const prev = prevPhaseRef.current;
@@ -66,8 +99,10 @@ export default function SessionScreen({ route, navigation }) {
     if (phase === 'complete' && !completedRef.current) {
       completedRef.current = true;
       clearInterval(intervalRef.current);
-      ringBell();
-      playEndBell();
+      if (!isPredefined) {
+        ringBell();
+        playEndBell();
+      }
 
       commitCompletedSession({ durationMinutes: meditationTime }).then((result) => {
         navigation.replace('Complete', {
@@ -80,8 +115,10 @@ export default function SessionScreen({ route, navigation }) {
     }
 
     if (prev === 'preparation' && phase === 'meditation') {
-      ringBell();
-      playStartBell();
+      if (!isPredefined) {
+        ringBell();
+        playStartBell();
+      }
       setPhaseKey((k) => k + 1);
     }
   }, [phase]);
