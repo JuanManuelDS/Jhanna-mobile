@@ -129,6 +129,30 @@ describe('getPredefinedAudioDurationMs', () => {
     expect(unloadAsync).toHaveBeenCalled();
   });
 
+  it('waits for a delayed status update when initial status and getStatusAsync return no duration', async () => {
+    const { Audio } = require('expo-av');
+    let statusCallback = null;
+    const unloadAsync = jest.fn(() => Promise.resolve());
+    const setOnPlaybackStatusUpdate = jest.fn((cb) => { statusCallback = cb; });
+    const getStatusAsync = jest.fn(() => Promise.resolve({ isLoaded: true, durationMillis: null }));
+    Audio.Sound.createAsync.mockImplementationOnce(() =>
+      Promise.resolve({
+        sound: { unloadAsync, setOnPlaybackStatusUpdate, getStatusAsync },
+        status: { isLoaded: true, durationMillis: null },
+      })
+    );
+
+    const pending = getPredefinedAudioDurationMs('short-instructions');
+    // Simulate the decoder reporting the duration on a later status update.
+    await new Promise((r) => setTimeout(r, 10));
+    expect(statusCallback).toBeInstanceOf(Function);
+    statusCallback({ isLoaded: true, durationMillis: 42 * 60 * 1000 });
+
+    const ms = await pending;
+    expect(ms).toBe(42 * 60 * 1000);
+    expect(unloadAsync).toHaveBeenCalled();
+  });
+
   it('caches duration so a second call does not re-load', async () => {
     const { Audio } = require('expo-av');
     Audio.Sound.createAsync.mockClear();

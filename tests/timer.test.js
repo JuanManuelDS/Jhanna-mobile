@@ -22,16 +22,23 @@ describe('phaseAt', () => {
     expect(result.remainingSeconds).toBe(570);
   });
 
-  it('returns complete when elapsed covers both phases', () => {
+  it('returns meditation with zero remaining at the exact end mark', () => {
     const result = phaseAt(PREP, MED, PREP + MED);
-    expect(result.phase).toBe('complete');
+    expect(result.phase).toBe('meditation');
     expect(result.remainingSeconds).toBe(0);
+    expect(result.overtimeSeconds).toBe(0);
   });
 
-  it('returns complete for elapsed beyond total', () => {
-    const result = phaseAt(PREP, MED, PREP + MED + 100);
-    expect(result.phase).toBe('complete');
+  it('returns meditation with overtime past the end mark', () => {
+    const result = phaseAt(PREP, MED, PREP + MED + 150);
+    expect(result.phase).toBe('meditation');
     expect(result.remainingSeconds).toBe(0);
+    expect(result.overtimeSeconds).toBe(150);
+  });
+
+  it('reports zero overtime mid-meditation', () => {
+    const result = phaseAt(PREP, MED, 90);
+    expect(result.overtimeSeconds).toBe(0);
   });
 
   describe('skip-prep (prepSec === 0)', () => {
@@ -39,12 +46,21 @@ describe('phaseAt', () => {
       const result = phaseAt(0, MED, 0);
       expect(result.phase).toBe('meditation');
       expect(result.remainingSeconds).toBe(MED);
+      expect(result.overtimeSeconds).toBe(0);
     });
 
-    it('returns complete when meditation finishes', () => {
+    it('hits zero remaining at the end mark', () => {
       const result = phaseAt(0, MED, MED);
-      expect(result.phase).toBe('complete');
+      expect(result.phase).toBe('meditation');
       expect(result.remainingSeconds).toBe(0);
+      expect(result.overtimeSeconds).toBe(0);
+    });
+
+    it('reports overtime past the end mark', () => {
+      const result = phaseAt(0, MED, MED + 75);
+      expect(result.phase).toBe('meditation');
+      expect(result.remainingSeconds).toBe(0);
+      expect(result.overtimeSeconds).toBe(75);
     });
   });
 });

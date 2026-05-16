@@ -19,7 +19,7 @@ const CIRCUMFERENCE = 2 * Math.PI * R;
 // Rotate arc to start at 12 o'clock
 const START_OFFSET = CIRCUMFERENCE * 0.25;
 
-export default function CircularTimer({ phaseDurationSec, remainingSec, isPaused, phaseKey }) {
+export default function CircularTimer({ phaseDurationSec, remainingSec, overtimeSec = 0, isPaused, phaseKey }) {
   const progress = useSharedValue(1);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function CircularTimer({ phaseDurationSec, remainingSec, isPaused
     };
   });
 
-  const timeLabel = formatMSS(remainingSec);
+  const timeLabel = overtimeSec > 0 ? formatMSS(overtimeSec) : formatMSS(remainingSec);
 
   return (
     <View style={styles.wrapper}>

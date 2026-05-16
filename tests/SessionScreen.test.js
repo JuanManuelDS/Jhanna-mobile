@@ -1,4 +1,4 @@
-import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
+import { render, fireEvent, act } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import SessionScreen from '../src/screens/SessionScreen';
 import SessionControls from '../src/components/SessionControls';
@@ -238,7 +238,7 @@ describe('SessionScreen — predefined sessions', () => {
     expect(mockPlayEndBell).not.toHaveBeenCalled();
   });
 
-  it('passes predefined props to usePredefinedAudio with onAudioEnd only when endsWithAudio', () => {
+  it('passes predefined props to usePredefinedAudio without an onAudioEnd handler', () => {
     render(<SessionScreen route={predefinedRoute()} navigation={mockNavigation} />);
     expect(lastPredefinedAudioCall).toBeTruthy();
     expect(lastPredefinedAudioCall.predefined).toEqual(
@@ -247,7 +247,7 @@ describe('SessionScreen — predefined sessions', () => {
     expect(lastPredefinedAudioCall.onAudioEnd).toBeUndefined();
   });
 
-  it('Short Instructions: onAudioEnd commits session and navigates to Complete', async () => {
+  it('Short Instructions also runs without onAudioEnd (no auto-complete on audio end)', () => {
     render(
       <SessionScreen
         route={predefinedRoute({
@@ -260,20 +260,8 @@ describe('SessionScreen — predefined sessions', () => {
         navigation={mockNavigation}
       />
     );
-
-    expect(typeof lastPredefinedAudioCall.onAudioEnd).toBe('function');
-
-    await act(async () => {
-      lastPredefinedAudioCall.onAudioEnd();
-    });
-
-    await waitFor(() => {
-      expect(mockCommitCompletedSession).toHaveBeenCalledTimes(1);
-      expect(mockNavigation.replace).toHaveBeenCalledWith(
-        'Complete',
-        expect.objectContaining({ duration: 1 })
-      );
-    });
+    expect(lastPredefinedAudioCall).toBeTruthy();
+    expect(lastPredefinedAudioCall.onAudioEnd).toBeUndefined();
   });
 });
 

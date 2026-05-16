@@ -133,6 +133,36 @@ export async function getPredefinedAudioDurationMs(id) {
         const fresh = await sound.getStatusAsync();
         ms = fresh?.durationMillis ?? null;
       }
+      // expo-av sometimes reports isLoaded=true with durationMillis=null for
+      // longer MP3s (notably on iOS) until the decoder has parsed the header.
+      // Wait for a status update that carries a real duration, polling as a
+      // nudge, with a timeout safety net.
+      if (ms == null && typeof sound.setOnPlaybackStatusUpdate === 'function') {
+        ms = await new Promise((resolve) => {
+          let pollId;
+          let timeoutId;
+          let settled = false;
+          const finish = (value) => {
+            if (settled) return;
+            settled = true;
+            try { sound.setOnPlaybackStatusUpdate(null); } catch (_) {}
+            if (pollId) clearInterval(pollId);
+            if (timeoutId) clearTimeout(timeoutId);
+            resolve(value);
+          };
+          sound.setOnPlaybackStatusUpdate((status) => {
+            if (status?.durationMillis != null) finish(status.durationMillis);
+          });
+          if (typeof sound.getStatusAsync === 'function') {
+            pollId = setInterval(() => {
+              sound.getStatusAsync().then((s) => {
+                if (s?.durationMillis != null) finish(s.durationMillis);
+              }).catch(() => {});
+            }, 200);
+          }
+          timeoutId = setTimeout(() => finish(null), 5000);
+        });
+      }
       if (ms != null) _durationCacheMs.set(id, ms);
       return ms;
     } catch (e) {
