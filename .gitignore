@@ -39,3 +39,11 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# audio files
+*.mp3
+*.wav
+*.aac
+*.m4a
+*.ogg
+*.flac
