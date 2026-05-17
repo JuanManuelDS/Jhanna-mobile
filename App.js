@@ -5,9 +5,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import { Audio, InterruptionModeAndroid } from 'expo-av';
 import {
+  DMSans_300Light,
   DMSans_400Regular,
   DMSans_500Medium,
   DMSans_600SemiBold,
+  DMSans_700Bold,
 } from '@expo-google-fonts/dm-sans';
 import {
   DMSerifDisplay_400Regular,
@@ -25,9 +27,11 @@ export default function App() {
   const hydrated = useAppStore((s) => s.hydrated);
 
   const [fontsLoaded] = useFonts({
+    DMSans_300Light,
     DMSans_400Regular,
     DMSans_500Medium,
     DMSans_600SemiBold,
+    DMSans_700Bold,
     DMSerifDisplay_400Regular,
     DMSerifDisplay_400Regular_Italic,
   });

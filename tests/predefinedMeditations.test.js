@@ -8,8 +8,8 @@ import {
 } from '../src/utils/predefinedMeditations';
 
 describe('PREDEFINED_MEDITATIONS catalog', () => {
-  it('contains exactly 11 entries', () => {
-    expect(PREDEFINED_MEDITATIONS).toHaveLength(11);
+  it('contains exactly 12 entries', () => {
+    expect(PREDEFINED_MEDITATIONS).toHaveLength(12);
   });
 
   it('first entry is Short Instructions', () => {
@@ -20,9 +20,17 @@ describe('PREDEFINED_MEDITATIONS catalog', () => {
     expect(first.meditationTime).toBeNull();
   });
 
-  it('entries 2 through 11 are Day 1 → Day 10 in order', () => {
+  it('second entry is Long Instructions', () => {
+    const second = PREDEFINED_MEDITATIONS[1];
+    expect(second.id).toBe('long-instructions');
+    expect(second.name).toBe('Long Instructions');
+    expect(second.kind).toBe(PREDEFINED_KIND.SHORT_INSTRUCTIONS);
+    expect(second.meditationTime).toBeNull();
+  });
+
+  it('entries 3 through 12 are Day 1 → Day 10 in order', () => {
     for (let i = 1; i <= 10; i++) {
-      const entry = PREDEFINED_MEDITATIONS[i];
+      const entry = PREDEFINED_MEDITATIONS[i + 1];
       expect(entry.id).toBe(`day-${i}`);
       expect(entry.name).toBe(`Day ${i} Chantings`);
       expect(entry.kind).toBe(PREDEFINED_KIND.DAY_CHANTING);
@@ -30,11 +38,11 @@ describe('PREDEFINED_MEDITATIONS catalog', () => {
     }
   });
 
-  it('every entry has the required fields and 30s prep', () => {
+  it('every entry has the required fields and 15s prep', () => {
     for (const m of PREDEFINED_MEDITATIONS) {
       expect(typeof m.id).toBe('string');
       expect(typeof m.name).toBe('string');
-      expect(m.prepTime).toBe(30);
+      expect(m.prepTime).toBe(15);
       expect(m.audio).toBeTruthy();
     }
   });
@@ -47,7 +55,7 @@ describe('PREDEFINED_MEDITATIONS catalog', () => {
 
 describe('getPredefinedById', () => {
   it('returns the matching meditation by id', () => {
-    expect(getPredefinedById('day-1')).toBe(PREDEFINED_MEDITATIONS[1]);
+    expect(getPredefinedById('day-1')).toBe(PREDEFINED_MEDITATIONS[2]);
     expect(getPredefinedById('short-instructions')).toBe(PREDEFINED_MEDITATIONS[0]);
   });
 
