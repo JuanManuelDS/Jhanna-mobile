@@ -1,27 +1,108 @@
 import { View, Text } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
 
-export default function SessionRow({ session }) {
+const BROWN = '#A0654A';
+const SAND = '#C8A96E';
+const TERRACOTTA = '#E8936A';
+const BADGE_BG = 'rgba(232, 147, 106, 0.1)';
+const BADGE_BORDER = 'rgba(232, 147, 106, 0.12)';
+const DIVIDER = 'rgba(200, 169, 110, 0.12)';
+
+function ClockGlyph() {
+  return (
+    <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"
+        stroke={TERRACOTTA}
+        strokeOpacity={0.7}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M12 7v5l3 2"
+        stroke={TERRACOTTA}
+        strokeOpacity={0.7}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+export default function SessionRow({ session, isLast = false }) {
   const d = new Date(session.timestamp);
-  const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const primary = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const secondaryDate = d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const timeOfDay = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
   return (
-    <View className="mb-2 flex-row items-center gap-2.5 rounded-xl bg-card px-3 py-2.5">
-      <View className="h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sand">
-        <MaterialCommunityIcons name="clock-outline" size={16} color="#A0654A" />
+    <View
+      testID="session-row"
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 12,
+        borderBottomWidth: isLast ? 0 : 1,
+        borderBottomColor: DIVIDER,
+      }}
+    >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 12,
+          backgroundColor: BADGE_BG,
+          borderWidth: 1,
+          borderColor: BADGE_BORDER,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <ClockGlyph />
       </View>
 
-      <View className="min-w-0 flex-1">
-        <Text className="mb-0.5 font-sans-semibold text-xs text-brown" numberOfLines={1}>
-          {dateStr}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          numberOfLines={1}
+          style={{
+            fontFamily: 'DMSans_500Medium',
+            fontSize: 13,
+            color: BROWN,
+            marginBottom: 1,
+          }}
+        >
+          {primary}
         </Text>
-        <Text className="font-sans text-[10px] text-sand">{timeStr}</Text>
+        <Text
+          numberOfLines={1}
+          style={{
+            fontFamily: 'DMSans_400Regular',
+            fontSize: 11,
+            color: SAND,
+          }}
+        >
+          {secondaryDate} · {timeOfDay}
+        </Text>
       </View>
 
-      <View className="shrink-0 rounded-lg bg-cream px-2 py-1">
-        <Text className="font-sans-semibold text-[11px] text-brown">{session.duration} min</Text>
-      </View>
+      <Text
+        style={{
+          fontFamily: 'DMSans_500Medium',
+          fontSize: 13,
+          color: BROWN,
+          letterSpacing: -0.2,
+          flexShrink: 0,
+        }}
+      >
+        {session.duration} min
+      </Text>
     </View>
   );
 }

@@ -8,16 +8,17 @@ const TABS = [
 ];
 
 const BROWN = '#A0654A';
-const TAN = '#C8A96E';
-const MUTED = '#B8956A';
+const INACTIVE = 'rgba(160, 101, 74, 0.4)';
+const TERRACOTTA = '#E8936A';
+const STRIP_BORDER = 'rgba(200, 169, 110, 0.18)';
 
-export default function StatsTabs({ value, onChange }) {
+export default function TabNav({ value, onChange }) {
   return (
     <View
       style={{
         flexDirection: 'row',
-        borderBottomWidth: 1.5,
-        borderBottomColor: TAN,
+        borderBottomWidth: 1,
+        borderBottomColor: STRIP_BORDER,
       }}
     >
       {TABS.map((opt) => {
@@ -31,19 +32,22 @@ export default function StatsTabs({ value, onChange }) {
             accessibilityState={{ selected: active }}
             style={{
               flex: 1,
-              paddingTop: 10,
-              paddingBottom: 8,
+              paddingTop: 11,
+              paddingBottom: 9,
+              paddingHorizontal: 4,
               alignItems: 'center',
-              borderBottomWidth: 2.5,
-              borderBottomColor: active ? BROWN : 'transparent',
-              marginBottom: -1.5,
+              borderBottomWidth: 2,
+              borderBottomColor: active ? TERRACOTTA : 'transparent',
+              marginBottom: -1,
+              backgroundColor: 'transparent',
             }}
           >
             <Text
               style={{
-                fontSize: 11,
-                fontWeight: active ? '700' : '400',
-                color: active ? BROWN : MUTED,
+                fontFamily: active ? 'DMSans_500Medium' : 'DMSans_400Regular',
+                fontSize: 12,
+                letterSpacing: 0.4,
+                color: active ? BROWN : INACTIVE,
               }}
             >
               {opt.label}

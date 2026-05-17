@@ -44,7 +44,7 @@ export default function HomeScreen({ navigation }) {
     const persisted = sessionDefaults?.lastPredefinedId ?? null;
     return getPredefinedById(persisted) ? persisted : null;
   });
-  const [shortInstrAudioMs, setShortInstrAudioMs] = useState(null);
+  const [instrAudioMsById, setInstrAudioMsById] = useState({});
   const beginningRef = useRef(false);
 
   // Drop a stale persisted lastPredefinedId so it does not stick around in storage.
@@ -57,18 +57,29 @@ export default function HomeScreen({ navigation }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Lazily preload Short Instructions audio duration when user opens Predefined tab.
+  // Lazily preload audio durations for instruction-style entries (where the
+  // meditation length IS the audio length) when the user opens Predefined.
   useEffect(() => {
     if (activeTab !== 'predefined') return;
-    if (shortInstrAudioMs != null) return;
     let cancelled = false;
-    getPredefinedAudioDurationMs('short-instructions').then((ms) => {
-      if (!cancelled && ms != null) setShortInstrAudioMs(ms);
+    const pending = PREDEFINED_MEDITATIONS.filter(
+      (m) =>
+        m.kind === PREDEFINED_KIND.SHORT_INSTRUCTIONS &&
+        m.meditationTime == null &&
+        instrAudioMsById[m.id] == null
+    );
+    if (pending.length === 0) return;
+    pending.forEach((m) => {
+      getPredefinedAudioDurationMs(m.id).then((ms) => {
+        if (!cancelled && ms != null) {
+          setInstrAudioMsById((prev) => ({ ...prev, [m.id]: ms }));
+        }
+      });
     });
     return () => {
       cancelled = true;
     };
-  }, [activeTab, shortInstrAudioMs]);
+  }, [activeTab, instrAudioMsById]);
 
   const prepSeconds = settings.prepSeconds;
   const meditationTime = settings.meditationTime;
@@ -92,14 +103,13 @@ export default function HomeScreen({ navigation }) {
     () =>
       PREDEFINED_MEDITATIONS.map((m) => {
         if (m.kind === PREDEFINED_KIND.SHORT_INSTRUCTIONS && m.meditationTime == null) {
-          const minutes = shortInstrAudioMs != null
-            ? Math.max(1, Math.ceil(shortInstrAudioMs / 60000))
-            : null;
+          const ms = instrAudioMsById[m.id];
+          const minutes = ms != null ? Math.max(1, Math.ceil(ms / 60000)) : null;
           return { ...m, meditationTime: minutes };
         }
         return m;
       }),
-    [shortInstrAudioMs]
+    [instrAudioMsById]
   );
 
   const handleBegin = async () => {

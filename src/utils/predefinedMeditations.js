@@ -3,7 +3,7 @@ export const PREDEFINED_KIND = {
   DAY_CHANTING: 'day',
 };
 
-const PREP_SECONDS = 30;
+const PREP_SECONDS = 15;
 const DAY_TOTAL_SECONDS = 60 * 60;
 
 export const PREDEFINED_MEDITATIONS = [
@@ -14,6 +14,14 @@ export const PREDEFINED_MEDITATIONS = [
     prepTime: PREP_SECONDS,
     meditationTime: null,
     audio: require('../../assets/audios/Short-Instr_English_GroupSitting_GroupSitting_Janani_2001.mp3'),
+  },
+  {
+    id: 'long-instructions',
+    name: 'Long Instructions',
+    kind: PREDEFINED_KIND.SHORT_INSTRUCTIONS,
+    prepTime: PREP_SECONDS,
+    meditationTime: null,
+    audio: require('../../assets/audios/Long-Instr_English_GroupSitting_GroupSitting_Setu_2000.mp3'),
   },
   {
     id: 'day-1',

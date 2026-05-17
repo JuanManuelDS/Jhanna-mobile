@@ -151,7 +151,7 @@ describe('HomeScreen', () => {
       expect(mockNavigation.navigate).toHaveBeenCalledWith(
         'Session',
         expect.objectContaining({
-          prepSeconds: 30,
+          prepSeconds: 15,
           meditationTime: 60,
           predefined: expect.objectContaining({
             id: 'day-1',
@@ -184,7 +184,7 @@ describe('HomeScreen', () => {
       expect(mockNavigation.navigate).toHaveBeenCalledWith(
         'Session',
         expect.objectContaining({
-          prepSeconds: 30,
+          prepSeconds: 15,
           meditationTime: 7,
           predefined: expect.objectContaining({
             id: 'short-instructions',
